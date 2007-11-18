@@ -7,10 +7,9 @@
    ;; Conditions
 
    ;; Classes
-
+   #:buffered-reader
    ;; Generics
-
+   #:buf-read-line
    ;; Functions
-   #:buffer-byte-stream
-   #:read-byte-line
+   #:make-line-reader
    #:convert-to-char))
