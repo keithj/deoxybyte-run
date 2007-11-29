@@ -2,7 +2,7 @@
 (defsystem cl-io-utilities-test
     :depends-on (:cl-io-utilities :lisp-unit)
     :components ((:module :cl-io-utilities-test
-                          :pathname "src/"
+                          :pathname "src/test/"
                           :components ((:file "package")
                                        (:file "cl-io-utilities-test"
                                               :depends-on ("package")))))

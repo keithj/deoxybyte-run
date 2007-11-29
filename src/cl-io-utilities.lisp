@@ -1,17 +1,7 @@
 
 (in-package :cl-io-utilities)
 
-(defun load-from-realign-file (filepath)
-  (with-open-file (stream filepath
-                          :direction :input
-                          :element-type '(unsigned-byte 8))
-    (let ((br (make-line-reader stream)))
-      (do ((line (read-line-bytes br) (read-line-bytes br))
-           (line-count 0 (1+ line-count)))
-          ((null line) line-count)
-       line))))
-
-(defclass buffered-reader ()
+(defclass line-buffer ()
   ((stream :initarg :stream
            :initform nil
            :reader stream-of
@@ -20,60 +10,51 @@ bytes are read, via the buffer.")
    (buffer :initarg :buffer
            :initform nil
            :reader buffer-of
-           :documentation "The buffer from which lines are read."))
-  (:documentation "A reader that allows buffered reading of lines from
-a stream."))
+           :documentation "The buffer from which lines are read.")
+   (pushback :initform nil
+             :accessor pushback-of
+             :documentation "A list of lines that have been pushed
+back into the reader to be read again."))
+  (:documentation "Allows buffered reading of lines of bytes from a
+stream."))
 
-(defmethod initialize-instance :after ((obj buffered-reader) &key)
+(defmethod initialize-instance :after ((obj line-buffer) &key)
   (fill-buffer (buffer-of obj) (stream-of obj)))
 
-(defgeneric read-line-chars (buffered-reader)
-  (:documentation "Reads up to the next newline or end of stream,
-returning them as an array. The newline is not included. Returns two
-values - the array and either T or NIL to indicate whether a
-terminating newline was missing."))
+(defgeneric pull-line (line-buffer)
+  (:documentation "Reads up to the next newline from LINE-BUFFER, or
+end of stream, returning an array. The newline is not
+included. Returns two values - the array and either T or NIL to
+indicate whether a terminating newline was missing."))
 
-(defgeneric read-line-bytes (buffered-reader)
-  (:documentation "Reads up to the next newline or end of stream,
-returning them as an array. The newline is not included. Returns two
-values - the array and either T or NIL to indicate whether a
-terminating newline was missing."))
+(defgeneric push-line (line-buffer line)
+  (:documentation "Pushes LINE back into LINE-BUFFER."))
 
-(defmethod read-line-chars ((obj buffered-reader))
-  (multiple-value-bind (chunks has-newline)
-      (read-chunks (buffer-of obj) (stream-of obj))
-    (cond ((null chunks)
-           (values nil nil))
-          ((zerop (length (first chunks)))
-           (make-array 0 :element-type 'base-char))
-          ((= 1 (length chunks))
-           (values (array-copy-convert (first chunks)
-                                       (make-array (length (first chunks))
-                                                   :element-type 'base-char))
-                   has-newline))
-          (t
-           (values (concatenate-chunks-convert chunks) has-newline)))))
+(defmethod pull-line ((obj line-buffer))
+  (if (null (pushback-of obj))
+      (multiple-value-bind (chunks has-newline)
+          (read-chunks (buffer-of obj) (stream-of obj))
+        (cond ((null chunks)
+               (values nil nil))
+              ((zerop (length (first chunks)))
+               (first chunks))
+              ((= 1 (length chunks))
+               (values (first chunks) has-newline))
+              (t
+               (values (concatenate-chunks chunks) has-newline))))
+    (pop (pushback-of obj))))
 
-(defmethod read-line-bytes ((obj buffered-reader))
-  (multiple-value-bind (chunks has-newline)
-      (read-chunks (buffer-of obj) (stream-of obj))
-    (cond ((null chunks)
-           (values nil nil))
-          ((zerop (length (first chunks)))
-           (make-array 0 :element-type 'base-char))
-          ((= 1 (length chunks))
-           (values (first chunks) has-newline))
-          (t
-           (values (concatenate-chunks chunks) has-newline)))))
+(defmethod push-line ((obj line-buffer) (line vector))
+  (push line (pushback-of obj)))
 
-(defun make-line-reader (stream &optional (nl-char #\Newline))
-  (make-instance 'buffered-reader :stream stream
+(defun make-line-buffer (stream &optional (nl-char #\Newline))
+  (make-instance 'line-buffer :stream stream
                  :buffer (make-byte-buffer :nl-code (char-code nl-char))))
- 
+
 (defstruct byte-buffer
   (nl-code 0 :type fixnum)
-  (bytes (make-array 4096 :element-type
-                     '(unsigned-byte 8) :initial-element 0)
+  (bytes (make-array 4096 :element-type '(unsigned-byte 8)
+                     :initial-element 0)
          :type (simple-array (unsigned-byte 8) (4096)))
   (num-bytes 0 :type (integer 0 4096))
   (offset 0 :type (integer 0 4096)))
@@ -90,12 +71,13 @@ bytes read."
         (read-sequence (byte-buffer-bytes bb) stream)))
 
 (defun read-chunks (bb stream)
-  "Reads chunks of bytes from STREAM viabyte-buffer BB, up to the next
-newline or end of stream, returning them in a list. The newline is not
-included. Returns two values - a list of chunks and either NIL or T to
-indicate whether a terminating newline was missing. When the stream
-underlying the buffer is exhausted the list of chunks will be empty."
-  (declare (optimize (speed 3) (safety 1) (debug 0)))
+  "Reads chunks of bytes from STREAM via byte-buffer BB, up to the
+next newline or end of stream, returning them in a list. The newline
+is not included. Returns two values - a list of chunks and either NIL
+or T to indicate whether a terminating newline was missing. When the
+stream underlying the buffer is exhausted the list of chunks will be
+empty."
+  (declare (optimize (speed 3) (safety 0) (debug 0)))
   (let ((nl-position (position (byte-buffer-nl-code bb)
                                (byte-buffer-bytes bb)
                                :start (byte-buffer-offset bb)
@@ -108,9 +90,9 @@ underlying the buffer is exhausted the list of chunks will be empty."
            ;; if necessary.
            (let ((chunk (make-array (- nl-position (byte-buffer-offset bb))
                                     :element-type '(unsigned-byte 8))))
-             (array-copy (byte-buffer-bytes bb) chunk
-                         :source-start (byte-buffer-offset bb)
-                         :source-end (1- nl-position))
+             (copy-array (byte-buffer-bytes bb)
+                         (byte-buffer-offset bb) (1- nl-position)
+                         chunk 0)
              (setf (byte-buffer-offset bb) (1+ nl-position))
              (when (is-empty-p bb)
                (fill-buffer bb stream))
@@ -139,9 +121,9 @@ underlying the buffer is exhausted the list of chunks will be empty."
                                     :element-type '(unsigned-byte 8)))
                  (chunks nil)
                  (missing-nl t))
-             (array-copy (byte-buffer-bytes bb) chunk
-                         :source-start (byte-buffer-offset bb)
-                         :source-end (1- (byte-buffer-num-bytes bb)))
+             (copy-array (byte-buffer-bytes bb)
+                         (byte-buffer-offset bb) (1- (byte-buffer-num-bytes bb))
+                         chunk 0)
              (fill-buffer bb stream)
              (multiple-value-setq (chunks missing-nl)
                (read-chunks bb stream))
@@ -151,55 +133,12 @@ underlying the buffer is exhausted the list of chunks will be empty."
   "Concatenates the list of byte arrays CHUNKS by copying their
 contents into a new fixed length array, which is returned."
   (let ((line (make-array (reduce #'+ chunks :key #'length)
-                          :element-type 'base-char)))
-    (loop for chunk in chunks
-          for chunk-length = (length chunk)
-          with offset = 0
-          do (unless (zerop chunk-length)
-               (array-copy-convert chunk line :dest-start offset)
-               (incf offset chunk-length)))
-    line))
-
-(defun concatenate-chunks-convert (chunks)
-  "Concatenates the list of byte arrays CHUNKS by copying their
-contents into a new fixed length array, which is returned."
-  (let ((line (make-array (reduce #'+ chunks :key #'length)
                           :element-type '(unsigned-byte 8))))
-    (loop for chunk in chunks
+    (loop for chunk of-type (simple-array (unsigned-byte 8)) in chunks
           for chunk-length = (length chunk)
           with offset = 0
           do (unless (zerop chunk-length)
-               (array-copy chunk line :dest-start offset)
+               (copy-array chunk 0 (1- chunk-length)
+                           line offset)
                (incf offset chunk-length)))
     line))
-
-(defun array-copy (source dest &key (source-start 0)
-                   (source-end (1- (length source))) (dest-start 0))
-  "Copies bytes between SOURCE indices SOURCE-START and SOURCE-END to
-DEST, inserting them into DEST at DEST-START, finally returning DEST."
-  (declare (optimize (speed 3) (safety 1) (debug 0)))
-  (declare (type (simple-array (unsigned-byte 8)) source dest))
-  (declare (type fixnum source-start source-end dest-start))
-  (when (> source-start source-end)
-    (error "SOURCE-START ~a was greater than SOURCE-END ~a~%"
-           source-start source-end))
-  (loop for si from source-start to source-end
-        for di = dest-start then (1+ di)
-        do (setf (aref dest di) (aref source si)))
-  dest)
-
-(defun array-copy-convert (source dest &key (source-start 0)
-                           (source-end (1- (length source))) (dest-start 0))
-  "Copies elts between SOURCE indices SOURCE-START and SOURCE-END to
-DEST, inserting them into DEST at DEST-START, finally returning DEST."
-  (declare (optimize (speed 3) (safety 1) (debug 0)))
-  (declare (type (simple-array (unsigned-byte 8)) source))
-  (declare (type (simple-array base-char) dest))
-  (declare (type fixnum source-start source-end dest-start))
-  (when (> source-start source-end)
-    (error "SOURCE-START ~a was greater than SOURCE-END ~a~%"
-           source-start source-end))
-  (loop for si from source-start to source-end
-        for di = dest-start then (1+ di)
-        do (setf (aref dest di) (code-char (aref source si))))
-  dest)

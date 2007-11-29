@@ -1,15 +1,15 @@
 
 (defpackage #:cl-io-utilities
-  (:use #:common-lisp)
+  (:use #:common-lisp #:cl-gp-utilities)
   (:nicknames #:iou)
   (:documentation "IO utilities.")
   (:export
    ;; Conditions
 
    ;; Classes
-   #:buffered-reader
+   #:line-buffer
    ;; Generics
-   #:buf-read-line
+   #:pull-line
+   #:push-line
    ;; Functions
-   #:make-line-reader
-   #:convert-to-char))
+   #:make-line-buffer))
