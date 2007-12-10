@@ -11,5 +11,7 @@
    ;; Generics
    #:pull-line
    #:push-line
+   #:more-lines-p
+   #:find-line
    ;; Functions
    #:make-line-buffer))

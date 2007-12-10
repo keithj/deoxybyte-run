@@ -65,3 +65,47 @@
           (pull-line lb)
         (is (equalp (car (last lines)) bytes))
         (is-true missing-newline-p)))))
+
+(test find-line/line-buffer
+  (with-open-file (stream "data/test3.txt"
+                   :direction :input
+                   :element-type '(unsigned-byte 8))
+    (let ((lb (make-line-buffer stream))
+          (lines (mapcar #'as-bytes '("abc"
+                                      "def"
+                                      "ghi"
+                                      "jkl"
+                                      "mno"
+                                      "pqr"
+                                      "stu"
+                                      "vwx"
+                                      "yz"))))
+      ;; Success at line 1 of max 1 -> "abc"
+      (multiple-value-bind (line found line-count)
+          (find-line lb #'(lambda (a)
+                            (= (aref a 0) (char-code #\a))) 1)
+        (is (equalp (nth 0 lines) line))
+        (is-true found)
+        (is (= 1 line-count)))
+      ;; Fail at line 1 of max 1 -> "def"
+      (multiple-value-bind (line found line-count)
+          (find-line lb #'(lambda (a)
+                            (= (aref a 0) (char-code #\Z))) 1)
+        (is (equalp (nth 1 lines) line))
+        (is-false found)
+        (is (= 1 line-count)))
+      ;; Success at line 3 of max 4
+      (multiple-value-bind (line found line-count)
+          (find-line lb #'(lambda (a)
+                            (= (aref a 0) (char-code #\m))) 4)
+        (is (equalp (nth 4 lines) line))
+        (is-true found)
+        (is (= 3 line-count)))
+      ;; Fall through to eof
+      (multiple-value-bind (line found line-count)
+          (find-line lb #'(lambda (a)
+                            (declare (ignore a))
+                            nil) 99)
+        (is (null line))
+        (is-false found)
+        (is (= 5 line-count))))))
