@@ -6,8 +6,9 @@
 (deftype byte-buffer ()
   `(simple-array (unsigned-byte 8) (,+byte-buffer-size+)))
 
-(deftype byte-buffer-subscript ()
+(deftype byte-buffer-index ()
   `(integer 0 ,+byte-buffer-size+))
+
 
 (defclass line-buffer ()
   ((stream :initarg :stream
@@ -15,7 +16,15 @@
            :reader stream-of
            :documentation "The underlying stream from which lines of
 bytes are read, via the buffer.")
-   (buffer :initarg :buffer
+   (pushback :initform nil
+             :accessor pushback-of
+             :documentation "A list of lines that have been pushed
+back into the reader to be read again."))
+  (:documentation "Allows buffered reading of lines of characters from
+a stream."))
+
+(defclass byte-line-buffer (line-buffer)
+  ((buffer :initarg :buffer
            :initform nil
            :reader buffer-of
            :documentation "The buffer from which lines are read.")
@@ -29,15 +38,11 @@ the buffer from the stream.")
    (offset :initform 0
            :accessor offset-of
            :documentation "The offset in the byte buffer from which
-the next byte is to be read.")
-   (pushback :initform nil
-             :accessor pushback-of
-             :documentation "A list of lines that have been pushed
-back into the reader to be read again."))
+the next byte is to be read."))
   (:documentation "Allows buffered reading of lines of bytes from a
 stream."))
 
-(defmethod initialize-instance :after ((obj line-buffer) &key)
+(defmethod initialize-instance :after ((obj byte-line-buffer) &key)
   (fill-buffer obj))
 
 (defgeneric pull-line (line-buffer)
@@ -57,12 +62,55 @@ indicate whether a terminating newline was missing."))
 until a line matching PREDICATE is found or until a number of lines
 equal to MAX-LINES have been examined."))
 
+(defgeneric read-chunks (byte-line-buffer)
+  (:documentation "Reads chunks of bytes up to the next newline or end
+of stream, returning them in a list. The newline is not
+included. Returns two values - a list of chunks and either NIL or T to
+indicate whether a terminating newline was missing. When the stream
+underlying the buffer is exhausted the list of chunks will be empty."))
+
+(defgeneric buffer-empty-p (byte-line-buffer)
+  (:documentation "Returns T if the internal byte buffer of
+LINE-BUFFER is empty."))
+
+(defgeneric fill-buffer (byte-line-buffer)
+  (:documentation "Fills the byte buffer of LINE-BUFFER from its
+stream, setting the num-bytes slot to the number of bytes actually
+read."))
+
 (defmethod pull-line ((obj line-buffer))
+  (if (null (pushback-of obj))
+      (multiple-value-bind (line missing-newline-p)
+          (read-line (stream-of obj) nil nil)
+        (values line missing-newline-p))
+    (pop (pushback-of obj))))
+
+(defmethod push-line ((obj line-buffer) (line string))
+  (push line (pushback-of obj)))
+
+(defmethod more-lines-p ((obj line-buffer))
+  (or (pushback-of obj)
+      (peek-char nil (stream-of obj) nil nil)))
+
+(defmethod find-line ((obj line-buffer) predicate
+                      &optional (max-lines 1))
+  (flet ((match-p (p x)
+           (and x (funcall p x))))
+    (do* ((line (pull-line obj) (pull-line obj))
+          (matching-line-p (match-p predicate line)
+                           (match-p predicate line))
+          (line-count 1 (1+ line-count)))
+         ((or (null line)
+              matching-line-p
+              (= line-count max-lines))
+          (values line matching-line-p line-count)))))
+
+(defmethod pull-line ((obj byte-line-buffer))
   (if (null (pushback-of obj))
       (multiple-value-bind (chunks has-newline-p)
           (read-chunks obj)
         (cond ((null chunks)
-               (values nil nil))
+               (values nil t))
               ((zerop (length (first chunks)))
                (first chunks))
               ((= 1 (length chunks))
@@ -71,53 +119,38 @@ equal to MAX-LINES have been examined."))
                (values (concatenate-chunks chunks) has-newline-p))))
     (pop (pushback-of obj))))
 
-(defmethod push-line ((obj line-buffer) (line vector))
+(defmethod push-line ((obj byte-line-buffer) (line vector))
   (push line (pushback-of obj)))
 
-(defmethod more-lines-p ((obj line-buffer))
+(defmethod more-lines-p ((obj byte-line-buffer))
   (or (pushback-of obj)
       (not (zerop (num-bytes-of obj)))))
 
-(defmethod find-line ((obj line-buffer) predicate &optional (max-lines 1))
-  (flet ((match-p (p x)
-            (and x (funcall p x))))
-    (do* ((line (pull-line obj) (pull-line obj))      
-          (matching-line-p (match-p predicate line) (match-p predicate line))
-          (line-count 1 (1+ line-count)))
-         ((or (null line)
-              matching-line-p
-              (= line-count max-lines))
-          (values line matching-line-p line-count)))))
+(defun make-line-buffer (stream)
+  (make-instance 'line-buffer :stream stream))
 
-(defun make-line-buffer (stream &optional (nl-char #\Newline))
-  (make-instance 'line-buffer :stream stream
+(defun make-byte-line-buffer (stream &optional (nl-char #\Newline))
+  (make-instance 'byte-line-buffer :stream stream
                  :nl-code (char-code nl-char)
                  :buffer (make-array +byte-buffer-size+
                                      :element-type '(unsigned-byte 8)
                                      :initial-element 0)))
 
-(defmethod is-empty-p ((obj line-buffer))
-  "Returns TRUE if the buffer OBJ is empty."
+(defmethod buffer-empty-p ((obj byte-line-buffer))
   (= (offset-of obj) (num-bytes-of obj)))
 
-(defmethod fill-buffer ((obj line-buffer))
-  "Fills the buffer OBJ from the stream, updating its record of the
-number of bytes read."
+(defmethod fill-buffer ((obj byte-line-buffer))
   (setf (offset-of obj) 0
-        (num-bytes-of obj) (read-sequence (buffer-of obj) (stream-of obj))))
+        (num-bytes-of obj) (read-sequence (buffer-of obj)
+                                          (stream-of obj))))
 
-(defmethod read-chunks ((obj line-buffer))
-  "Reads chunks of bytes from buffer OBJ, up to the next newline or
-end of stream, returning them in a list. The newline is not
-included. Returns two values - a list of chunks and either NIL or T to
-indicate whether a terminating newline was missing. When the stream
-underlying the buffer is exhausted the list of chunks will be empty."
+(defmethod read-chunks ((obj byte-line-buffer))
   (declare (optimize (speed 3) (safety 0) (debug 0)))
   (let ((offset (offset-of obj))
         (num-bytes (num-bytes-of obj))
         (buffer (buffer-of obj)))
     (declare (type byte-buffer buffer)
-             (type byte-buffer-subscript offset num-bytes))
+             (type byte-buffer-index offset num-bytes))
     (let ((nl-position (position (nl-code-of obj) buffer
                                  :start offset :end num-bytes)))
       (cond ((and nl-position
@@ -128,10 +161,10 @@ underlying the buffer is exhausted the list of chunks will be empty."
            ;; if necessary.
              (let ((chunk (make-array (- nl-position offset)
                                       :element-type '(unsigned-byte 8))))
-               (copy-array buffer offset (1- nl-position)
-                           chunk 0)
+               (gpu:copy-array buffer offset (1- nl-position)
+                               chunk 0)
                (setf (offset-of obj) (1+ nl-position))
-               (when (is-empty-p obj)
+               (when (buffer-empty-p obj)
                  (fill-buffer obj))
                (values (list chunk) nil)))
             ((and nl-position
@@ -142,7 +175,7 @@ underlying the buffer is exhausted the list of chunks will be empty."
              ;; the buffer if necessary.
              (let ((chunk (make-array 0 :element-type '(unsigned-byte 8))))
                (setf (offset-of obj) (1+ nl-position))
-               (when (is-empty-p obj)
+               (when (buffer-empty-p obj)
                  (fill-buffer obj))
                (values (list chunk) nil)))
             ((zerop num-bytes)
@@ -157,8 +190,8 @@ underlying the buffer is exhausted the list of chunks will be empty."
                                       :element-type '(unsigned-byte 8)))
                    (chunks nil)
                    (missing-nl t))
-               (copy-array buffer offset (1- num-bytes)
-                           chunk 0)
+               (gpu:copy-array buffer offset (1- num-bytes)
+                               chunk 0)
                (fill-buffer obj)
                (multiple-value-setq (chunks missing-nl)
                  (read-chunks obj))
@@ -169,11 +202,12 @@ underlying the buffer is exhausted the list of chunks will be empty."
 contents into a new fixed length array, which is returned."
   (let ((line (make-array (reduce #'+ chunks :key #'length)
                           :element-type '(unsigned-byte 8))))
-    (loop for chunk of-type (simple-array (unsigned-byte 8)) in chunks
-          for chunk-length = (length chunk)
-          with offset = 0
-          do (unless (zerop chunk-length)
-               (copy-array chunk 0 (1- chunk-length)
-                           line offset)
-               (incf offset chunk-length)))
+    (loop
+       for chunk of-type (simple-array (unsigned-byte 8)) in chunks
+       for chunk-length = (length chunk)
+       with offset = 0
+       do (unless (zerop chunk-length)
+            (gpu:copy-array chunk 0 (1- chunk-length)
+                            line offset)
+            (incf offset chunk-length)))
     line))
