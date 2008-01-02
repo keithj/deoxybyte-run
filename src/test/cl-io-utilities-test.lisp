@@ -39,7 +39,7 @@
   (with-open-file (stream "data/test1.txt"
                    :direction :input
                    :element-type '(unsigned-byte 8))
-    (let ((lb (make-byte-line-buffer stream))
+    (let ((lb (make-line-buffer stream))
           (line (as-bytes "abcdefghijklmnopqrstuvwxyz")))
       (multiple-value-bind (bytes missing-newline-p)
           (pull-line lb)
@@ -68,7 +68,7 @@
   (with-open-file (stream "data/test1.txt"
                    :direction :input
                    :element-type '(unsigned-byte 8))
-    (let ((lb (make-byte-line-buffer stream))
+    (let ((lb (make-line-buffer stream))
           (line (as-bytes "abcdefghijklmnopqrstuvwxyz")))
       (multiple-value-bind (bytes missing-newline-p)
           (pull-line lb)
@@ -102,7 +102,7 @@
   (with-open-file (stream "data/test2.txt"
                    :direction :input
                    :element-type '(unsigned-byte 8))
-    (let ((lb (make-byte-line-buffer stream))
+    (let ((lb (make-line-buffer stream))
           (lines (mapcar #'as-bytes '("1234567890"
                                       "0987654321"
                                       "abcdefghij"
@@ -121,7 +121,7 @@
   (with-open-file (stream "data/test3.txt"
                    :direction :input
                    :element-type '(unsigned-byte 8))
-    (let ((lb (make-byte-line-buffer stream))
+    (let ((lb (make-line-buffer stream))
           (lines (mapcar #'as-bytes '("abc"
                                       "def"
                                       "ghi"

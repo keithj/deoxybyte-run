@@ -126,16 +126,6 @@ read."))
   (or (pushback-of obj)
       (not (zerop (num-bytes-of obj)))))
 
-(defun make-line-buffer (stream)
-  (make-instance 'line-buffer :stream stream))
-
-(defun make-byte-line-buffer (stream &optional (nl-char #\Newline))
-  (make-instance 'byte-line-buffer :stream stream
-                 :nl-code (char-code nl-char)
-                 :buffer (make-array +byte-buffer-size+
-                                     :element-type '(unsigned-byte 8)
-                                     :initial-element 0)))
-
 (defmethod buffer-empty-p ((obj byte-line-buffer))
   (= (offset-of obj) (num-bytes-of obj)))
 
@@ -196,6 +186,25 @@ read."))
                (multiple-value-setq (chunks missing-nl)
                  (read-chunks obj))
                (values (cons chunk chunks) missing-nl)))))))
+
+(defun make-line-buffer (stream)
+  (unless (and (streamp stream)
+               (input-stream-p stream)
+               (open-stream-p stream))
+    (error "invalid STREAM argument ~a; expected an open input-stream"
+           stream))
+  (let ((elt-type (stream-element-type stream)))
+    (cond ((subtypep elt-type 'character)
+           (make-instance 'line-buffer :stream stream))
+          ((equal '(unsigned-byte 8) elt-type)
+           (make-instance 'byte-line-buffer :stream stream
+                          :nl-code (char-code #\Newline)
+                          :buffer (make-array +byte-buffer-size+
+                                              :element-type '(unsigned-byte 8)
+                                              :initial-element 0)))
+          (t
+           (error "invalid element type ~a from stream ~a"
+                  elt-type stream)))))
 
 (defun concatenate-chunks (chunks)
   "Concatenates the list of byte arrays CHUNKS by copying their
