@@ -5,7 +5,8 @@
   (:documentation "IO utilities.")
   (:export
    ;; Conditions
-
+   #:general-parse-error
+   #:malformed-record-error
    ;; Classes
    #:line-buffer
    #:byte-line-buffer
@@ -14,6 +15,8 @@
    #:push-line
    #:more-lines-p
    #:find-line
+   #:text-of
    ;; Functions
    #:make-line-buffer
-   #:make-byte-line-buffer))
+   #:make-byte-line-buffer
+   #:parse-float))

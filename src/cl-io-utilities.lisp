@@ -10,6 +10,25 @@
   `(integer 0 ,+byte-buffer-size+))
 
 
+;;; parse conditions
+
+(define-condition general-parse-error (error)
+  ((text :initform nil
+         :initarg :text
+         :reader text-of
+         :documentation "Error message text."))
+  (:report (lambda (condition stream)
+             (format stream "general parse error~@[: ~a~]."
+                     (text-of condition)))))
+
+(define-condition malformed-record-error (general-parse-error)
+  ()
+  (:report (lambda (condition stream)
+             (format stream "malformed record error~@[: ~a~]"
+                     (text-of condition)))))
+
+;;; line-buffer classes
+
 (defclass line-buffer ()
   ((stream :initarg :stream
            :initform nil
@@ -42,8 +61,8 @@ the next byte is to be read."))
   (:documentation "Allows buffered reading of lines of bytes from a
 stream."))
 
-(defmethod initialize-instance :after ((obj byte-line-buffer) &key)
-  (fill-buffer obj))
+
+;;; line-buffer generic functions
 
 (defgeneric pull-line (line-buffer)
   (:documentation "Reads up to the next newline from LINE-BUFFER, or
@@ -57,10 +76,10 @@ indicate whether a terminating newline was missing."))
 (defgeneric more-lines-p (line-buffer)
   (:documentation "Returns T if LINE-BUFFER contains unread data."))
 
-(defgeneric find-line (line-buffer predicate &optional max-lines)
+(defgeneric find-line (line-buffer test &optional max-lines)
   (:documentation "Iterates through lines pulled from LINE-BUFFER
-until a line matching PREDICATE is found or until a number of lines
-equal to MAX-LINES have been examined."))
+until a line matching predicate TEST is found or until a number of
+lines equal to MAX-LINES have been examined."))
 
 (defgeneric read-chunks (byte-line-buffer)
   (:documentation "Reads chunks of bytes up to the next newline or end
@@ -78,6 +97,37 @@ LINE-BUFFER is empty."))
 stream, setting the num-bytes slot to the number of bytes actually
 read."))
 
+
+;;; line-buffer constructor
+
+(defun make-line-buffer (stream)
+  "Returns a new LINE-BUFFER (or BYTE-LINE-BUFFER) wrapping
+STREAM. The element type of STREAM must be either CHARACTER
+or (UNSIGNED-BYTE 8)."
+  (unless (and (streamp stream)
+               (input-stream-p stream)
+               (open-stream-p stream))
+    (error "invalid STREAM argument ~a; expected an open input-stream"
+           stream))
+  (let ((elt-type (stream-element-type stream)))
+    (cond ((subtypep elt-type 'character)
+           (make-instance 'line-buffer :stream stream))
+          ((equal '(unsigned-byte 8) elt-type)
+           (make-instance 'byte-line-buffer :stream stream
+                          :nl-code (char-code #\Newline)
+                          :buffer (make-array +byte-buffer-size+
+                                              :element-type '(unsigned-byte 8)
+                                              :initial-element 0)))
+          (t
+           (error "invalid element type ~a from stream ~a"
+                  elt-type stream)))))
+
+
+;;; line-buffer methods
+
+(defmethod initialize-instance :after ((obj byte-line-buffer) &key)
+  (fill-buffer obj))
+
 (defmethod pull-line ((obj line-buffer))
   (if (null (pushback-of obj))
       (multiple-value-bind (line missing-newline-p)
@@ -92,18 +142,19 @@ read."))
   (or (pushback-of obj)
       (peek-char nil (stream-of obj) nil nil)))
 
-(defmethod find-line ((obj line-buffer) predicate
-                      &optional (max-lines 1))
-  (flet ((match-p (p x)
-           (and x (funcall p x))))
-    (do* ((line (pull-line obj) (pull-line obj))
-          (matching-line-p (match-p predicate line)
-                           (match-p predicate line))
-          (line-count 1 (1+ line-count)))
-         ((or (null line)
-              matching-line-p
-              (= line-count max-lines))
-          (values line matching-line-p line-count)))))
+(defmethod find-line ((obj line-buffer) test &optional max-lines)
+  (do* ((line (pull-line obj) (pull-line obj))
+        (matching-line-p (and line (funcall test line))
+                         (and line (funcall test line)))
+        (line-count 1 (1+ line-count)))
+       ((or (null line)
+            matching-line-p
+            (and (not (null max-lines))
+                 (= line-count max-lines)))
+        (values line matching-line-p line-count))))
+
+
+;;; byte-line-buffer methods
 
 (defmethod pull-line ((obj byte-line-buffer))
   (if (null (pushback-of obj))
@@ -135,7 +186,7 @@ read."))
                                           (stream-of obj))))
 
 (defmethod read-chunks ((obj byte-line-buffer))
-  (declare (optimize (speed 3) (safety 0) (debug 0)))
+  (declare (optimize (speed 3) (debug 0)))
   (let ((offset (offset-of obj))
         (num-bytes (num-bytes-of obj))
         (buffer (buffer-of obj)))
@@ -186,25 +237,6 @@ read."))
                (multiple-value-setq (chunks missing-nl)
                  (read-chunks obj))
                (values (cons chunk chunks) missing-nl)))))))
-
-(defun make-line-buffer (stream)
-  (unless (and (streamp stream)
-               (input-stream-p stream)
-               (open-stream-p stream))
-    (error "invalid STREAM argument ~a; expected an open input-stream"
-           stream))
-  (let ((elt-type (stream-element-type stream)))
-    (cond ((subtypep elt-type 'character)
-           (make-instance 'line-buffer :stream stream))
-          ((equal '(unsigned-byte 8) elt-type)
-           (make-instance 'byte-line-buffer :stream stream
-                          :nl-code (char-code #\Newline)
-                          :buffer (make-array +byte-buffer-size+
-                                              :element-type '(unsigned-byte 8)
-                                              :initial-element 0)))
-          (t
-           (error "invalid element type ~a from stream ~a"
-                  elt-type stream)))))
 
 (defun concatenate-chunks (chunks)
   "Concatenates the list of byte arrays CHUNKS by copying their

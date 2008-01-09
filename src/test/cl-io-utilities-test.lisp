@@ -20,7 +20,7 @@
 (in-suite cl-io-utilities-system:testsuite)
 
 (test pull-line/line-buffer
-  (with-open-file (stream "data/test1.txt"
+  (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type 'base-char
                    :external-format :ascii)
@@ -36,7 +36,7 @@
         (is-true missing-newline-p)))))
 
 (test pull-line/byte-line-buffer
-  (with-open-file (stream "data/test1.txt"
+  (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
     (let ((lb (make-line-buffer stream))
@@ -51,7 +51,7 @@
         (is-true missing-newline-p)))))
 
 (test push-line/line-buffer
-  (with-open-file (stream "data/test1.txt"
+  (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type 'base-char
                    :external-format :ascii)
@@ -65,7 +65,7 @@
         (is (equalp line (pull-line lb)))))))
 
 (test push-line/byte-line-buffer
-  (with-open-file (stream "data/test1.txt"
+  (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
     (let ((lb (make-line-buffer stream))
@@ -79,7 +79,7 @@
 
 ;; This test fails on SBCL due to a bug in read-line (missing-newline-p)
 (test missing-newline-p/line-buffer
-  (with-open-file (stream "data/test2.txt"
+  (with-open-file (stream (method-name "data/test2.txt")
                    :direction :input
                    :element-type 'base-char
                    :external-format :ascii)
@@ -99,7 +99,7 @@
         (is-true missing-newline-p)))))
 
 (test missing-newline-p/byte-line-buffer
-  (with-open-file (stream "data/test2.txt"
+  (with-open-file (stream (merge-pathnames "data/test2.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
     (let ((lb (make-line-buffer stream))
@@ -118,7 +118,7 @@
         (is-true missing-newline-p)))))
 
 (test find-line/byte-line-buffer
-  (with-open-file (stream "data/test3.txt"
+  (with-open-file (stream (merge-pathnames "data/test3.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
     (let ((lb (make-line-buffer stream))
@@ -137,7 +137,8 @@
                             (= (aref a 0) (char-code #\a))) 1)
         (is (equalp (nth 0 lines) line))
         (is-true found)
-        (is (= 1 line-count)))
+        (is (= 1 line-count))
+        )
       ;; Fail at line 1 of max 1 -> "def"
       (multiple-value-bind (line found line-count)
           (find-line lb #'(lambda (a)
@@ -156,7 +157,7 @@
       (multiple-value-bind (line found line-count)
           (find-line lb #'(lambda (a)
                             (declare (ignore a))
-                            nil) 99)
+                            nil))
         (is (null line))
         (is-false found)
         (is (= 5 line-count))))))

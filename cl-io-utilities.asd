@@ -19,7 +19,8 @@
               :serial t
               :pathname "src/"
               :components ((:file "package")
-                           (:file "cl-io-utilities")))))
+                           (:file "cl-io-utilities")
+                           (:file "parse-float")))))
 
 
 (in-package #:asdf)
