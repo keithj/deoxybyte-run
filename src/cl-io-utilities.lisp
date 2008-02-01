@@ -11,38 +11,44 @@
 
 
 ;;; parse conditions
-
 (define-condition general-parse-error (error)
   ((text :initform nil
          :initarg :text
          :reader text-of
          :documentation "Error message text."))
   (:report (lambda (condition stream)
-             (format stream "general parse error~@[: ~a~]."
+             (format stream "General parse error~@[: ~a~]."
                      (text-of condition)))))
 
 (define-condition malformed-record-error (general-parse-error)
   ()
   (:report (lambda (condition stream)
-             (format stream "malformed record error~@[: ~a~]"
+             (format stream "Malformed record error~@[: ~a~]."
                      (text-of condition)))))
 
-;;; line-buffer classes
-
-(defclass line-buffer ()
+;;; Gray-stream classes
+(defclass wrapped-stream (fundamental-stream)
   ((stream :initarg :stream
-           :initform nil
            :reader stream-of
-           :documentation "The underlying stream from which lines of
-bytes are read, via the buffer.")
-   (pushback :initform nil
-             :accessor pushback-of
-             :documentation "A list of lines that have been pushed
-back into the reader to be read again."))
-  (:documentation "Allows buffered reading of lines of characters from
-a stream."))
+           :documentation "The underlying stream from which data are
+read.")))
 
-(defclass byte-line-buffer (line-buffer)
+(defclass line-input-stream ()
+  ((line-stack :initform nil
+               :accessor line-stack-of
+               :documentation "A list of lines that have been pushed
+back into the stream to be read again."))
+  (:documentation "A line-based stream that allows lines to be pushed
+back into a stack to be re-read."))
+
+(defclass character-line-input-stream (wrapped-stream
+                                       line-input-stream
+                                       fundamental-character-input-stream)
+  ())
+
+(defclass binary-line-input-stream (wrapped-stream
+                                    line-input-stream
+                                    fundamental-binary-input-stream)
   ((buffer :initarg :buffer
            :initform nil
            :reader buffer-of
@@ -62,88 +68,79 @@ the next byte is to be read."))
 stream."))
 
 
-;;; line-buffer generic functions
+;;; line-input-stream generic functions
+(defgeneric more-lines-p (line-input-stream)
+  (:documentation "Returns T if LINE-INPUT-STREAM contains unread
+data."))
 
-(defgeneric pull-line (line-buffer)
-  (:documentation "Reads up to the next newline from LINE-BUFFER, or
-end of stream, returning an array. The newline is not
-included. Returns two values - the array and either T or NIL to
-indicate whether a terminating newline was missing."))
+(defgeneric push-line (line-input-stream line)
+  (:documentation "Pushes LINE back into ."))
 
-(defgeneric push-line (line-buffer line)
-  (:documentation "Pushes LINE back into LINE-BUFFER."))
-
-(defgeneric more-lines-p (line-buffer)
-  (:documentation "Returns T if LINE-BUFFER contains unread data."))
-
-(defgeneric find-line (line-buffer test &optional max-lines)
-  (:documentation "Iterates through lines pulled from LINE-BUFFER
+(defgeneric find-line (line-input-stream test &optional max-lines)
+  (:documentation "Iterates through lines read from LINE-INPUT-STREAM
 until a line matching predicate TEST is found or until a number of
 lines equal to MAX-LINES have been examined."))
 
-(defgeneric read-chunks (byte-line-buffer)
+
+;;; binary-line-input-stream generic functions
+(defgeneric read-chunks (binary-line-input-stream)
   (:documentation "Reads chunks of bytes up to the next newline or end
 of stream, returning them in a list. The newline is not
 included. Returns two values - a list of chunks and either NIL or T to
 indicate whether a terminating newline was missing. When the stream
 underlying the buffer is exhausted the list of chunks will be empty."))
 
-(defgeneric buffer-empty-p (byte-line-buffer)
+(defgeneric buffer-empty-p (binary-line-input-stream)
   (:documentation "Returns T if the internal byte buffer of
-LINE-BUFFER is empty."))
+BINARY-LINE-INPUT-STREAM is empty."))
 
-(defgeneric fill-buffer (byte-line-buffer)
-  (:documentation "Fills the byte buffer of LINE-BUFFER from its
-stream, setting the num-bytes slot to the number of bytes actually
-read."))
+(defgeneric fill-buffer (binary-line-input-stream)
+  (:documentation "Fills the byte buffer of BINARY-LINE-INPUT-STREAM
+from its stream, setting the num-bytes slot to the number of bytes
+actually read."))
 
 
-;;; line-buffer constructor
-
-(defun make-line-buffer (stream)
-  "Returns a new LINE-BUFFER (or BYTE-LINE-BUFFER) wrapping
-STREAM. The element type of STREAM must be either CHARACTER
-or (UNSIGNED-BYTE 8)."
+;;; line-input-stream constructor
+(defun make-line-input-stream (stream)
+  "Returns a new CHARACTER-LINE-INPUT-STREAM or
+BINARY-LINE-INPUT-STREAM wrapping STREAM. The element type of STREAM
+must be either CHARACTER or (UNSIGNED-BYTE 8)."
   (unless (and (streamp stream)
                (input-stream-p stream)
                (open-stream-p stream))
-    (error "invalid STREAM argument ~a; expected an open input-stream"
+    (error "Invalid STREAM ~a: expected an open input-stream."
            stream))
   (let ((elt-type (stream-element-type stream)))
     (cond ((subtypep elt-type 'character)
-           (make-instance 'line-buffer :stream stream))
+           (make-instance 'character-line-input-stream
+                          :stream stream))
           ((equal '(unsigned-byte 8) elt-type)
-           (make-instance 'byte-line-buffer :stream stream
+           (make-instance 'binary-line-input-stream
+                          :stream stream
                           :nl-code (char-code #\Newline)
                           :buffer (make-array +byte-buffer-size+
                                               :element-type '(unsigned-byte 8)
                                               :initial-element 0)))
           (t
-           (error "invalid element type ~a from stream ~a"
+           (error "Invalid element type ~a from stream ~a."
                   elt-type stream)))))
 
 
-;;; line-buffer methods
+;;; wrapped-stream methods
+(defmethod stream-element-type ((stream wrapped-stream))
+  (stream-element-type (stream-of stream)))
 
-(defmethod initialize-instance :after ((obj byte-line-buffer) &key)
-  (fill-buffer obj))
+(defmethod close ((stream wrapped-stream) &key abort)
+  (close (stream-of stream) :abort abort))
 
-(defmethod pull-line ((obj line-buffer))
-  (if (null (pushback-of obj))
-      (multiple-value-bind (line missing-newline-p)
-          (read-line (stream-of obj) nil nil)
-        (values line missing-newline-p))
-    (pop (pushback-of obj))))
+(defmethod open-stream-p ((stream wrapped-stream))
+  (open-stream-p (stream-of stream)))
 
-(defmethod push-line ((obj line-buffer) (line string))
-  (push line (pushback-of obj)))
 
-(defmethod more-lines-p ((obj line-buffer))
-  (or (pushback-of obj)
-      (peek-char nil (stream-of obj) nil nil)))
-
-(defmethod find-line ((obj line-buffer) test &optional max-lines)
-  (do* ((line (pull-line obj) (pull-line obj))
+;;; line-input-stream methods
+(defmethod find-line ((stream line-input-stream) test
+                      &optional max-lines)
+  (do* ((line (stream-read-line stream) (stream-read-line stream))
         (matching-line-p (and line (funcall test line))
                          (and line (funcall test line)))
         (line-count 1 (1+ line-count)))
@@ -154,12 +151,50 @@ or (UNSIGNED-BYTE 8)."
         (values line matching-line-p line-count))))
 
 
-;;; byte-line-buffer methods
+;;; character-line-input-stream methods
+(defmethod stream-clear-input ((stream character-line-input-stream))
+  (setf (line-stack-of stream) nil))
 
-(defmethod pull-line ((obj byte-line-buffer))
-  (if (null (pushback-of obj))
+(defmethod stream-read-char ((stream character-line-input-stream))
+  (stream-clear-input stream)
+  (read-char (stream-of stream)))
+
+(defmethod stream-unread-char ((stream character-line-input-stream)
+                               (char character))
+  (stream-clear-input stream)
+  (unread-char char (stream-of stream)))
+
+(defmethod stream-read-line ((stream character-line-input-stream))
+  (if (null (line-stack-of stream))
+      (multiple-value-bind (line missing-newline-p)
+          (read-line (stream-of stream) nil nil)
+        (values line missing-newline-p))
+    (pop (line-stack-of stream))))
+
+(defmethod more-lines-p ((stream character-line-input-stream))
+  (or (line-stack-of stream)
+      (peek-char nil (stream-of stream) nil nil)))
+
+(defmethod push-line ((stream character-line-input-stream) (line string))
+  (push line (line-stack-of stream)))
+
+
+;;; binary-line-input-stream methods
+(defmethod stream-clear-input ((stream binary-line-input-stream))
+  (setf (offset-of stream) 0
+        (num-bytes-of stream) 0
+        (line-stack-of stream) nil))
+
+(defmethod stream-read-byte ((stream binary-line-input-stream))
+  (stream-clear-input stream)
+  (read-byte (stream-of stream)))
+
+(defmethod stream-read-line ((stream binary-line-input-stream))
+  (unless (open-stream-p (stream-of stream))
+    (error "Stream is closed."))
+  (if (null (line-stack-of stream))
       (multiple-value-bind (chunks has-newline-p)
-          (read-chunks obj)
+          (read-chunks stream)
         (cond ((null chunks)
                (values nil t))
               ((zerop (length (first chunks)))
@@ -168,31 +203,35 @@ or (UNSIGNED-BYTE 8)."
                (values (first chunks) has-newline-p))
               (t
                (values (concatenate-chunks chunks) has-newline-p))))
-    (pop (pushback-of obj))))
+    (pop (line-stack-of stream))))
 
-(defmethod push-line ((obj byte-line-buffer) (line vector))
-  (push line (pushback-of obj)))
+(defmethod more-lines-p ((stream binary-line-input-stream))
+  (or (line-stack-of stream)
+      (not (zerop (num-bytes-of stream)))))
 
-(defmethod more-lines-p ((obj byte-line-buffer))
-  (or (pushback-of obj)
-      (not (zerop (num-bytes-of obj)))))
+(defmethod push-line ((stream binary-line-input-stream) (line vector))
+  (push line (line-stack-of stream)))
 
-(defmethod buffer-empty-p ((obj byte-line-buffer))
-  (= (offset-of obj) (num-bytes-of obj)))
+(defmethod buffer-empty-p ((stream binary-line-input-stream))
+  (= (offset-of stream) (num-bytes-of stream)))
 
-(defmethod fill-buffer ((obj byte-line-buffer))
-  (setf (offset-of obj) 0
-        (num-bytes-of obj) (read-sequence (buffer-of obj)
-                                          (stream-of obj))))
+(defmethod fill-buffer ((stream binary-line-input-stream))
+  (setf (offset-of stream) 0
+        (num-bytes-of stream) (read-sequence (buffer-of stream)
+                                             (stream-of stream))))
 
-(defmethod read-chunks ((obj byte-line-buffer))
-  (declare (optimize (speed 3) (debug 0)))
-  (let ((offset (offset-of obj))
-        (num-bytes (num-bytes-of obj))
-        (buffer (buffer-of obj)))
+(defmethod read-chunks :before ((stream binary-line-input-stream))
+  (when (buffer-empty-p stream)
+    (fill-buffer stream)))
+
+(defmethod read-chunks ((stream binary-line-input-stream))
+  (declare (optimize (speed 0) (debug 3)))
+  (let ((offset (offset-of stream))
+        (num-bytes (num-bytes-of stream))
+        (buffer (buffer-of stream)))
     (declare (type byte-buffer buffer)
              (type byte-buffer-index offset num-bytes))
-    (let ((nl-position (position (nl-code-of obj) buffer
+    (let ((nl-position (position (nl-code-of stream) buffer
                                  :start offset :end num-bytes)))
       (cond ((and nl-position
                   (plusp (- nl-position offset)))
@@ -204,9 +243,9 @@ or (UNSIGNED-BYTE 8)."
                                       :element-type '(unsigned-byte 8))))
                (gpu:copy-array buffer offset (1- nl-position)
                                chunk 0)
-               (setf (offset-of obj) (1+ nl-position))
-               (when (buffer-empty-p obj)
-                 (fill-buffer obj))
+               (setf (offset-of stream) (1+ nl-position))
+               ;; (when (buffer-empty-p stream)
+               ;;   (fill-buffer stream))
                (values (list chunk) nil)))
             ((and nl-position
                   (zerop (- nl-position offset)))
@@ -215,9 +254,9 @@ or (UNSIGNED-BYTE 8)."
              ;; consistency). Move the offset beyond the newline. Fill
              ;; the buffer if necessary.
              (let ((chunk (make-array 0 :element-type '(unsigned-byte 8))))
-               (setf (offset-of obj) (1+ nl-position))
-               (when (buffer-empty-p obj)
-                 (fill-buffer obj))
+               (setf (offset-of stream) (1+ nl-position))
+               ;; (when (buffer-empty-p stream)
+               ;;   (fill-buffer stream))
                (values (list chunk) nil)))
             ((zerop num-bytes)
              ;; The buffer is empty
@@ -233,9 +272,9 @@ or (UNSIGNED-BYTE 8)."
                    (missing-nl t))
                (gpu:copy-array buffer offset (1- num-bytes)
                                chunk 0)
-               (fill-buffer obj)
+               (fill-buffer stream)
                (multiple-value-setq (chunks missing-nl)
-                 (read-chunks obj))
+                 (read-chunks stream))
                (values (cons chunk chunks) missing-nl)))))))
 
 (defun concatenate-chunks (chunks)

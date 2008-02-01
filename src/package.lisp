@@ -1,6 +1,6 @@
 
 (defpackage #:cl-io-utilities
-  (:use #:common-lisp)
+  (:use #:common-lisp #:trivial-gray-streams)
   (:nicknames #:iou)
   (:documentation "IO utilities.")
   (:export
@@ -8,15 +8,14 @@
    #:general-parse-error
    #:malformed-record-error
    ;; Classes
-   #:line-buffer
-   #:byte-line-buffer
+   #:line-input-stream
+   #:character-line-input-stream
+   #:binary-line-input-stream
    ;; Generics
-   #:pull-line
    #:push-line
    #:more-lines-p
    #:find-line
    #:text-of
    ;; Functions
-   #:make-line-buffer
-   #:make-byte-line-buffer
+   #:make-line-input-stream
    #:parse-float))

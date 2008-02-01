@@ -13,7 +13,7 @@
     :author "Keith James"
     :version "0.1.0"
     :licence "GPL"
-    :depends-on (:cl-gp-utilities)
+    :depends-on (:cl-gp-utilities :trivial-gray-streams)
     :components
     ((:module :cl-io-utilities
               :serial t
