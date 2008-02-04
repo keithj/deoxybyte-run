@@ -1,16 +1,35 @@
+;;;
+;;; Copyright (C) 2007-2008, Keith James. All rights reserved.
+;;;
+;;; This program is free software: you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation, either version 3 of the License, or
+;;; (at your option) any later version.
+;;;
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;;;
 
 (in-package :cl-io-utilities)
 
-(defconstant +byte-buffer-size+ 8192)
+(defconstant +byte-buffer-size+ 8192
+  "Buffer size for binary-line-input-stream internal buffer.")
 
 (deftype byte-buffer ()
+  "Buffer type for binary-line-input-stream internal buffer."
   `(simple-array (unsigned-byte 8) (,+byte-buffer-size+)))
 
 (deftype byte-buffer-index ()
+  "Index type for binary-line-input-stream internal buffer."
   `(integer 0 ,+byte-buffer-size+))
 
 
-;;; parse conditions
+;;; Parse conditions
 (define-condition general-parse-error (error)
   ((text :initform nil
          :initarg :text
@@ -31,7 +50,8 @@
   ((stream :initarg :stream
            :reader stream-of
            :documentation "The underlying stream from which data are
-read.")))
+read."))
+  (:documentation "A Gray-stream wrapping a standrad Lisp stream."))
 
 (defclass line-input-stream ()
   ((line-stack :initform nil
@@ -44,7 +64,8 @@ back into a stack to be re-read."))
 (defclass character-line-input-stream (wrapped-stream
                                        line-input-stream
                                        fundamental-character-input-stream)
-  ())
+  ()
+  (:documentation "A line-input-stream whose lines are strings."))
 
 (defclass binary-line-input-stream (wrapped-stream
                                     line-input-stream
@@ -64,7 +85,8 @@ the buffer from the stream.")
            :accessor offset-of
            :documentation "The offset in the byte buffer from which
 the next byte is to be read."))
-  (:documentation "Allows buffered reading of lines of bytes from a
+  (:documentation "A line-input-stream whose lines are arrays of
+bytes. Allows buffered reading of lines of (unsigned-byte 8) from a
 stream."))
 
 
@@ -74,7 +96,7 @@ stream."))
 data."))
 
 (defgeneric push-line (line-input-stream line)
-  (:documentation "Pushes LINE back into ."))
+  (:documentation "Pushes LINE back into LINE-INPUT-STREAM."))
 
 (defgeneric find-line (line-input-stream test &optional max-lines)
   (:documentation "Iterates through lines read from LINE-INPUT-STREAM
@@ -135,6 +157,9 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
 
 (defmethod open-stream-p ((stream wrapped-stream))
   (open-stream-p (stream-of stream)))
+
+(defmethod stream-file-position ((stream wrapped-stream))
+  (file-position (stream-of stream)))
 
 
 ;;; line-input-stream methods
@@ -225,7 +250,7 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
     (fill-buffer stream)))
 
 (defmethod read-chunks ((stream binary-line-input-stream))
-  (declare (optimize (speed 0) (debug 3)))
+  (declare (optimize (speed 3) (debug 0)))
   (let ((offset (offset-of stream))
         (num-bytes (num-bytes-of stream))
         (buffer (buffer-of stream)))
@@ -244,8 +269,6 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
                (gpu:copy-array buffer offset (1- nl-position)
                                chunk 0)
                (setf (offset-of stream) (1+ nl-position))
-               ;; (when (buffer-empty-p stream)
-               ;;   (fill-buffer stream))
                (values (list chunk) nil)))
             ((and nl-position
                   (zerop (- nl-position offset)))
@@ -255,8 +278,6 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
              ;; the buffer if necessary.
              (let ((chunk (make-array 0 :element-type '(unsigned-byte 8))))
                (setf (offset-of stream) (1+ nl-position))
-               ;; (when (buffer-empty-p stream)
-               ;;   (fill-buffer stream))
                (values (list chunk) nil)))
             ((zerop num-bytes)
              ;; The buffer is empty
@@ -269,13 +290,13 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
              (let ((chunk (make-array (- num-bytes offset)
                                       :element-type '(unsigned-byte 8)))
                    (chunks nil)
-                   (missing-nl t))
+                   (missing-nl-p t))
                (gpu:copy-array buffer offset (1- num-bytes)
                                chunk 0)
                (fill-buffer stream)
-               (multiple-value-setq (chunks missing-nl)
+               (multiple-value-setq (chunks missing-nl-p)
                  (read-chunks stream))
-               (values (cons chunk chunks) missing-nl)))))))
+               (values (cons chunk chunks) missing-nl-p)))))))
 
 (defun concatenate-chunks (chunks)
   "Concatenates the list of byte arrays CHUNKS by copying their
