@@ -96,7 +96,6 @@ FIELDS named by FIELD-NAMES."
   (let ((field-values (mapcar #'(lambda (key)
                                   (assocdr key fields)) field-names)))
     (cons name (not (null (apply validator field-values))))))
-      
 
 (defun collect-parser-args (field)
   "Returns an argument list form for FIELD to be used by PARSE-FIELD

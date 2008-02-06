@@ -29,22 +29,6 @@
   `(integer 0 ,+byte-buffer-size+))
 
 
-;;; Parse conditions
-(define-condition general-parse-error (error)
-  ((text :initform nil
-         :initarg :text
-         :reader text-of
-         :documentation "Error message text."))
-  (:report (lambda (condition stream)
-             (format stream "General parse error~@[: ~a~]."
-                     (text-of condition)))))
-
-(define-condition malformed-record-error (general-parse-error)
-  ()
-  (:report (lambda (condition stream)
-             (format stream "Malformed record error~@[: ~a~]."
-                     (text-of condition)))))
-
 ;;; Gray-stream classes
 (defclass wrapped-stream (fundamental-stream)
   ((stream :initarg :stream

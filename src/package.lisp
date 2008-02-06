@@ -36,6 +36,6 @@
    #:make-line-input-stream
    #:parse-float
    #:default-integer-parser
-   #:default-flot-parser
+   #:default-float-parser
    ;; Macros
    #:define-line-parser))
