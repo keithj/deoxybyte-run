@@ -15,27 +15,21 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(defpackage #:cl-io-utilities
-  (:use #:common-lisp #:cl-gp-utilities #:trivial-gray-streams)
-  (:nicknames #:iou)
-  (:documentation "IO utilities.")
-  (:export
-   ;; Conditions
-   #:general-parse-error
-   #:malformed-record-error
-   ;; Classes
-   #:line-input-stream
-   #:character-line-input-stream
-   #:binary-line-input-stream
-   ;; Generics
-   #:push-line
-   #:more-lines-p
-   #:find-line
-   #:text-of
-   ;; Functions
-   #:make-line-input-stream
-   #:parse-float
-   #:default-integer-parser
-   #:default-flot-parser
-   ;; Macros
-   #:define-line-parser))
+(in-package :cl-io-utilities)
+
+
+;;; Parse conditions
+(define-condition general-parse-error (error)
+  ((text :initform nil
+         :initarg :text
+         :reader text-of
+         :documentation "Error message text."))
+  (:report (lambda (condition stream)
+             (format stream "General parse error~@[: ~a~]"
+                     (text-of condition)))))
+
+(define-condition malformed-record-error (general-parse-error)
+  ()
+  (:report (lambda (condition stream)
+             (format stream "Malformed record error~@[: ~a~]"
+                     (text-of condition)))))

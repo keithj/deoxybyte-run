@@ -35,8 +35,10 @@
               :serial t
               :pathname "src/"
               :components ((:file "package")
-                           (:file "cl-io-utilities")
-                           (:file "parse-float")))))
+                           (:file "conditions")
+                           (:file "parse-float")
+                           (:file "line-input-stream")
+                           (:file "simple-table-parser")))))
 
 
 (in-package #:asdf)
