@@ -20,9 +20,14 @@
   (:nicknames #:iou)
   (:documentation "IO utilities.")
   (:export
+   ;; Specials
+   #:*empty-field*
    ;; Conditions
    #:general-parse-error
    #:malformed-record-error
+   #:malformed-field-error
+   #:record-validation-error
+   #:record-field-error
    ;; Classes
    #:line-input-stream
    #:character-line-input-stream

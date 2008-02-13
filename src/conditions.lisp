@@ -33,3 +33,21 @@
   (:report (lambda (condition stream)
              (format stream "Malformed record error~@[: ~a~]"
                      (text-of condition)))))
+
+(define-condition record-validation-error (malformed-record-error)
+  ()
+  (:report (lambda (condition stream)
+             (format stream "Record validation error~@[: ~a~]"
+                     (text-of condition)))))
+
+(define-condition malformed-field-error (malformed-record-error)
+  ()
+  (:report (lambda (condition stream)
+             (format stream "Malformed field error~@[: ~a~]"
+                     (text-of condition)))))
+
+(define-condition field-validation-error (malformed-field-error)
+  ()
+  (:report (lambda (condition stream)
+             (format stream "Field validation error~@[: ~a~]"
+                     (text-of condition)))))

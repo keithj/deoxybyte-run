@@ -150,10 +150,10 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
 (defmethod find-line ((stream line-input-stream) test
                       &optional max-lines)
   (do* ((line (stream-read-line stream) (stream-read-line stream))
-        (matching-line-p (and line (funcall test line))
-                         (and line (funcall test line)))
+        (matching-line-p (and (vectorp line) (funcall test line))
+                         (and (vectorp line) (funcall test line)))
         (line-count 1 (1+ line-count)))
-       ((or (null line)
+       ((or (eql :eof line)
             matching-line-p
             (and (not (null max-lines))
                  (= line-count max-lines)))
@@ -182,7 +182,7 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
 
 (defmethod more-lines-p ((stream character-line-input-stream))
   (or (line-stack-of stream)
-      (peek-char nil (stream-of stream) nil nil)))
+      (peek-char nil (stream-of stream) :eof nil)))
 
 (defmethod push-line ((stream character-line-input-stream) (line string))
   (push line (line-stack-of stream)))
@@ -205,7 +205,7 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
       (multiple-value-bind (chunks has-newline-p)
           (read-chunks stream)
         (cond ((null chunks)
-               (values nil t))
+               (values :eof t))
               ((zerop (length (first chunks)))
                (first chunks))
               ((= 1 (length chunks))

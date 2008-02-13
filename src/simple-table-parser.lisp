@@ -17,6 +17,7 @@
 
 (in-package :cl-io-utilities)
 
+(defparameter *empty-field* "")
 
 (defmacro define-line-parser (parser-name delimiter fields
                               &optional constraints)
@@ -28,13 +29,16 @@
                                  constraints)))
     `(progn
        (defun ,parser-name (line)
+         (declare (optimize (speed 3)))
+         (declare (type simple-string line))
          (multiple-value-bind (field-starts field-ends)
              (vector-split-indices ,delimiter line)
+           (declare (type list field-starts))
            (unless (= ,field-count (length field-starts))
              (error 'malformed-record-error :text
-                    (format nil (msg "Invalid line having ~a fields"
-                                     "instead of ~a: ~a.")
-                            ,field-count (length field-starts) line)))
+                    (format nil (msg "Invalid line having ~d fields"
+                                     "instead of ~d: ~s.")
+                            (length field-starts) ,field-count line)))
            (let ((parsed-fields
                   (loop
                      for name in (list ,@(mapcar #'(lambda (n)
@@ -45,54 +49,94 @@
                      for end in field-ends
                      unless (arg-value :ignore arg-list)
                      collect (cons name
-                                   (apply #'parse-field line
+                                   (apply #'parse-field name line
                                           start end arg-list)))))
-             (let ((cross-validated
-                    (loop
-                       for name in (list ,@(mapcar #'(lambda (n)
-                                                       `(quote ,n))
-                                                   constraint-names))
-                       for form in (list ,@constraint-args)
-                       collect (apply #'cross-validate
-                                      name parsed-fields form))))
-               (flet ((failed-validation-p (x)
-                        (null (cdr x))))
-                 (when (some #'failed-validation-p cross-validated)
-                   (error 'malformed-record-error :text
-                          (format nil "Constraints ~a failed on line ~s."
-                                  (mapcar #'car cross-validated) line))))
-               parsed-fields)))))))
+             (let* ((record-constraints
+                     (loop
+                        for name in (list ,@(mapcar #'(lambda (n)
+                                                        `(quote ,n))
+                                                    constraint-names))
+                        for form in (list ,@constraint-args)
+                        collect (apply #'validate-record
+                                       name parsed-fields form)))
+                    (failed-constraints
+                     (loop
+                        for (result . nil) on record-constraints
+                        when (null (cdr result))
+                        collect (car result))))
+               (when failed-constraints
+                 (error 'record-validation-error :text
+                        (format nil "Constraints ~a failed on line ~s."
+                                failed-constraints line))))
+             parsed-fields))))))
 
-(defun default-integer-parser (str &optional (start 0) end)
-  "Returns an integer parsed from record STR between START and END."
+(defun default-string-parser (field-name str &key (start 0) end
+                              null-str)
+  "Returns a string subsequence from record STR between START and END,
+or NIL if STR is STRING= to NULL-STR between START and END."
+  (declare (optimize (speed 3)))
+  (declare (type simple-string str))
   (let ((end (or end (length str))))
-    (handler-case
-        (parse-integer str :start start :end end)
-      (parse-error (condition)
-        (error 'malformed-record-error :text
-               (format nil "~a" condition))))))
+    (if (and null-str (string= null-str str :start2 start :end2 end))
+        nil
+      (handler-case
+          (subseq str start end)
+        (parse-error (condition)
+          (error 'malformed-field-error :text
+                 (format nil "Invalid ~a field ~a: ~a" field-name
+                         (subseq str start end) condition)))))))
 
-(defun default-float-parser (str &optional (start 0) end)
-  "Returns a float parsed from record STR between START and END."
+(defun default-integer-parser (field-name str &key (start 0) end
+                               (null-str *empty-field*))
+  "Returns an integer parsed from record STR between START and END, or
+NIL if STR is STRING= to NULL-STR between START and END."
+  (declare (optimize (speed 3)))
+  (declare (type simple-string str))
   (let ((end (or end (length str))))
-    (handler-case
-        (parse-float str :start start :end end)
-      (parse-error (condition)
-        (error 'malformed-record-error :text
-               (format nil "~a" condition))))))
+    (if (and null-str (string= null-str str :start2 start :end2 end))
+        nil
+      (handler-case
+          (parse-integer str :start start :end end)
+        (parse-error (condition)
+          (error 'malformed-field-error :text
+                 (format nil "Invalid ~a field ~a: ~a" field-name
+                         (subseq str start end) condition)))))))
 
-(defun parse-field (line start end parser &optional validator)
-  "Returns a value parsed from LINE between START and END using
-PARSER and VALIDATOR."
-  (let ((parsed-value (funcall parser line start end)))
-    (if (and validator (funcall validator parsed-value))
-        parsed-value
+(defun default-float-parser (field-name str &key (start 0) end
+                             (null-str *empty-field*))
+  "Returns a float parsed from record STR between START and END, or
+NIL if STR is STRING= to NULL-STR between START and END."
+  ;; (declare (optimize (speed 3)))
+  ;; (declare (type simple-string str))
+  (let ((end (or end (length str))))
+    (if (and null-str (string= null-str str :start2 start :end2 end))
+        nil
+      (handler-case
+          (parse-float str :start start :end end)
+        (parse-error (condition)
+          (error 'malformed-field-error :text
+                 (format nil "Invalid ~a field ~a: ~a" field-name
+                         (subseq str start end) condition)))))))
+  
+(defun parse-field (field-name line start end null-str parser
+                    &optional validator)
+  "Returns a value parsed from LINE between START and END using PARSER
+and VALIDATOR."
+  (declare (optimize (speed 3)))
+  (declare (type simple-string line))
+  (let ((parsed-value (funcall parser field-name line
+                               :start start :end end
+                               :null-str null-str)))
+    (if validator
+        (funcall validator parsed-value)
       parsed-value)))
 
-(defun cross-validate (name fields validator &rest field-names)
+(defun validate-record (name fields validator &rest field-names)
   "Returns a pair of constraint NAME and either T or NIL, indicating
 the result of applying VALIDATOR to values from the alist of parsed
 FIELDS named by FIELD-NAMES."
+  ;; (declare (optimize (speed 3)))
+  ;; (declare (type function validator))
   (let ((field-values (mapcar #'(lambda (key)
                                   (assocdr key fields)) field-names)))
     (cons name (not (null (apply validator field-values))))))
@@ -102,25 +146,26 @@ FIELDS named by FIELD-NAMES."
 which has suitable parsers and validators set up for the standard
 field types: :string, :integer and :float."
   (destructuring-bind (field-name &key ignore (type :string)
-                                  parser validator)
+                                  null-str parser validator)
       field
     (declare (ignore field-name))
     (if ignore
         `(list :ignore t)
       (let ((field-parser
              (or parser (ecase type
-                          (:string #'subseq)
+                          (:string #'default-string-parser)
                           (:integer #'default-integer-parser)
                           (:float #'default-float-parser))))
             (field-validator
              (or validator (ecase type
-                             (:string #'(lambda (s)
-                                          (not (whitespace-string-p s))))
+                             (:string nil)
                              (:integer nil)
                              (:float nil)))))
-        `(list ,field-parser ,field-validator)))))
+        `(list ,null-str ,field-parser ,field-validator)))))
 
 (defun collect-constraint-args (form)
+  "Returns an argument list form to be used by CROSS-VALIDATE by
+quoting the field-names in FORM and re-ordering the elements."
   (destructuring-bind (constraint-name field-names validator)
       form
     (declare (ignore constraint-name))
