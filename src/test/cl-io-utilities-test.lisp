@@ -162,7 +162,7 @@
         (is-false missing-newline-p))
       (multiple-value-bind (bytes missing-newline-p)
           (stream-read-line s)
-        (is-false bytes)
+        (is (eql :eof bytes))
         (is-true missing-newline-p)))))
 
 (test push-line/character-line-input-stream
@@ -272,6 +272,6 @@
           (find-line s #'(lambda (a)
                             (declare (ignore a))
                             nil))
-        (is (null line))
+        (is (eql :eof line))
         (is-false found)
         (is (= 5 line-count))))))

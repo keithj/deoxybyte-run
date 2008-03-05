@@ -30,7 +30,7 @@
     `(progn
        (defun ,parser-name (line)
          (declare (optimize (speed 3)))
-         (declare (type simple-string line))
+         (declare (type simple-base-string line))
          (multiple-value-bind (field-starts field-ends)
              (vector-split-indices ,delimiter line)
            (declare (type list field-starts))
@@ -49,7 +49,8 @@
                      for end in field-ends
                      unless (arg-value :ignore arg-list)
                      collect (cons name
-                                   (apply #'parse-field name line
+                                   (apply #'parse-field
+                                          name line
                                           start end arg-list)))))
              (let* ((record-constraints
                      (loop
@@ -71,11 +72,12 @@
              parsed-fields))))))
 
 (defun default-string-parser (field-name str &key (start 0) end
-                              null-str)
-  "Returns a string subsequence from record STR between START and END,
-or NIL if STR is STRING= to NULL-STR between START and END."
+                              (null-str *empty-field*))
+  "Returns a string subsequence from simple-base-string record STR
+between START and END, or NIL if STR is STRING= to NULL-STR between
+START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-string str))
+  (declare (type simple-base-string str))
   (let ((end (or end (length str))))
     (if (and null-str (string= null-str str :start2 start :end2 end))
         nil
@@ -88,10 +90,11 @@ or NIL if STR is STRING= to NULL-STR between START and END."
 
 (defun default-integer-parser (field-name str &key (start 0) end
                                (null-str *empty-field*))
-  "Returns an integer parsed from record STR between START and END, or
-NIL if STR is STRING= to NULL-STR between START and END."
+  "Returns an integer parsed from simple-base-string record STR
+between START and END, or NIL if STR is STRING= to NULL-STR between
+START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-string str))
+  (declare (type simple-base-string str))
   (let ((end (or end (length str))))
     (if (and null-str (string= null-str str :start2 start :end2 end))
         nil
@@ -104,10 +107,11 @@ NIL if STR is STRING= to NULL-STR between START and END."
 
 (defun default-float-parser (field-name str &key (start 0) end
                              (null-str *empty-field*))
-  "Returns a float parsed from record STR between START and END, or
-NIL if STR is STRING= to NULL-STR between START and END."
-  ;; (declare (optimize (speed 3)))
-  ;; (declare (type simple-string str))
+  "Returns a float parsed from simple-base-string record STR between
+START and END, or NIL if STR is STRING= to NULL-STR between START and
+END."
+  (declare (optimize (speed 3)))
+  (declare (type simple-base-string str))
   (let ((end (or end (length str))))
     (if (and null-str (string= null-str str :start2 start :end2 end))
         nil
@@ -123,7 +127,7 @@ NIL if STR is STRING= to NULL-STR between START and END."
   "Returns a value parsed from LINE between START and END using PARSER
 and VALIDATOR."
   (declare (optimize (speed 3)))
-  (declare (type simple-string line))
+  (declare (type function parser))
   (let ((parsed-value (funcall parser field-name line
                                :start start :end end
                                :null-str null-str)))
@@ -135,8 +139,6 @@ and VALIDATOR."
   "Returns a pair of constraint NAME and either T or NIL, indicating
 the result of applying VALIDATOR to values from the alist of parsed
 FIELDS named by FIELD-NAMES."
-  ;; (declare (optimize (speed 3)))
-  ;; (declare (type function validator))
   (let ((field-values (mapcar #'(lambda (key)
                                   (assocdr key fields)) field-names)))
     (cons name (not (null (apply validator field-values))))))
@@ -153,9 +155,9 @@ field types: :string, :integer and :float."
         `(list :ignore t)
       (let ((field-parser
              (or parser (ecase type
-                          (:string #'default-string-parser)
-                          (:integer #'default-integer-parser)
-                          (:float #'default-float-parser))))
+                          (:string '#'default-string-parser)
+                          (:integer '#'default-integer-parser)
+                          (:float '#'default-float-parser))))
             (field-validator
              (or validator (ecase type
                              (:string nil)

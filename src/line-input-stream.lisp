@@ -214,6 +214,11 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
                (values (concatenate-chunks chunks) has-newline-p))))
     (pop (line-stack-of stream))))
 
+
+(defmethod more-lines-p :before ((stream binary-line-input-stream))
+  (when (zerop (num-bytes-of stream))
+    (read-chunks stream)))
+
 (defmethod more-lines-p ((stream binary-line-input-stream))
   (or (line-stack-of stream)
       (not (zerop (num-bytes-of stream)))))
@@ -234,7 +239,7 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
     (fill-buffer stream)))
 
 (defmethod read-chunks ((stream binary-line-input-stream))
-  (declare (optimize (speed 3) (debug 0)))
+  (declare (optimize (speed 3) (debug 0) (safety 0)))
   (let ((offset (offset-of stream))
         (num-bytes (num-bytes-of stream))
         (buffer (buffer-of stream)))
