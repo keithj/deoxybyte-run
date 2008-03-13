@@ -29,14 +29,6 @@
   `(integer 0 ,+byte-buffer-size+))
 
 
-;;; Gray-stream classes
-(defclass wrapped-stream (fundamental-stream)
-  ((stream :initarg :stream
-           :reader stream-of
-           :documentation "The underlying stream from which data are
-read."))
-  (:documentation "A Gray-stream wrapping a standrad Lisp stream."))
-
 (defclass line-input-stream ()
   ((line-stack :initform nil
                :accessor line-stack-of
@@ -214,6 +206,9 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
                (values (concatenate-chunks chunks) has-newline-p))))
     (pop (line-stack-of stream))))
 
+(defmethod stream-file-position ((stream binary-line-input-stream))
+  (- (file-position (stream-of stream))
+     (- (num-bytes-of stream) (offset-of stream))))
 
 (defmethod more-lines-p :before ((stream binary-line-input-stream))
   (when (zerop (num-bytes-of stream))

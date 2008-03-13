@@ -37,6 +37,7 @@
               :components ((:file "package")
                            (:file "conditions")
                            (:file "parse-float")
+                           (:file "streams")
                            (:file "line-input-stream")
                            (:file "simple-table-parser")))))
 

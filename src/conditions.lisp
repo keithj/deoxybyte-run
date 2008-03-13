@@ -17,7 +17,6 @@
 
 (in-package :cl-io-utilities)
 
-
 ;;; Parse conditions
 (define-condition general-parse-error (error)
   ((text :initform nil
