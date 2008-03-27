@@ -29,7 +29,7 @@
     :author "Keith James"
     :version "0.1.0"
     :licence "GPL v3"
-    :depends-on (:cl-gp-utilities :trivial-gray-streams)
+    :depends-on (:cl-gp-utilities :trivial-gray-streams :getopt)
     :components
     ((:module :cl-io-utilities
               :serial t
@@ -39,6 +39,7 @@
                            (:file "parse-float")
                            (:file "streams")
                            (:file "line-input-stream")
+                           (:file "command-line-interface")
                            (:file "simple-table-parser")))))
 
 
