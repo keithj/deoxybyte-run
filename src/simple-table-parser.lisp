@@ -17,7 +17,7 @@
 
 (in-package :cl-io-utilities)
 
-(defparameter *empty-field* ""
+(defparameter *empty-field* (make-array 0 :element-type 'base-char)
   "The default empty field string.")
 
 (defmacro define-line-parser (parser-name delimiter fields
@@ -66,8 +66,8 @@ optional: CONSTRAINTS - a list of field constraint definition lists. The
            (declare (type list field-starts))
            (unless (= ,field-count (length field-starts))
              (error 'malformed-record-error :text
-                    (format nil (msg "Invalid line having ~d fields"
-                                     "instead of ~d: ~s.")
+                    (format nil
+                            "Invalid line: ~d fields instead of ~d: ~s."
                             (length field-starts) ,field-count line)))
            (let ((parsed-fields
                   (loop
@@ -107,9 +107,9 @@ optional: CONSTRAINTS - a list of field constraint definition lists. The
 between START and END, or NIL if STR is STRING= to NULL-STR between
 START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-base-string str))
+  (declare (type simple-base-string str null-str))
   (let ((end (or end (length str))))
-    (if (and null-str (string= null-str str :start2 start :end2 end))
+    (if (string= null-str str :start2 start :end2 end)
         nil
       (handler-case
           (subseq str start end)
@@ -124,9 +124,9 @@ START and END."
 between START and END, or NIL if STR is STRING= to NULL-STR between
 START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-base-string str))
+  (declare (type simple-base-string str null-str))
   (let ((end (or end (length str))))
-    (if (and null-str (string= null-str str :start2 start :end2 end))
+    (if (string= null-str str :start2 start :end2 end)
         nil
       (handler-case
           (parse-integer str :start start :end end)
@@ -141,9 +141,9 @@ START and END."
 START and END, or NIL if STR is STRING= to NULL-STR between START and
 END."
   (declare (optimize (speed 3)))
-  (declare (type simple-base-string str))
+  (declare (type simple-base-string str null-str))
   (let ((end (or end (length str))))
-    (if (and null-str (string= null-str str :start2 start :end2 end))
+    (if (string= null-str str :start2 start :end2 end)
         nil
       (handler-case
           (parse-float str :start start :end end)
@@ -160,9 +160,12 @@ and VALIDATOR."
   (declare (type function parser))
   (let ((parsed-value (funcall parser field-name line
                                :start start :end end
-                               :null-str null-str)))
+                               :null-str (or null-str *empty-field*))))
     (if validator
-        (funcall validator parsed-value)
+        (handler-case
+            (funcall validator parsed-value)
+          (error (condition)
+            (error 'warning "Oops ~a ~a." field-name parsed-value)))
       parsed-value)))
 
 (defun validate-record (name fields validator &rest field-names)
@@ -171,7 +174,11 @@ the result of applying VALIDATOR to values from the alist of parsed
 FIELDS named by FIELD-NAMES."
   (let ((field-values (mapcar #'(lambda (key)
                                   (assocdr key fields)) field-names)))
-    (cons name (not (null (apply validator field-values))))))
+    (cons name (not (null
+                     (handler-case
+                         (apply validator field-values)
+                       (error (condition)
+                         nil)))))))
 
 (defun collect-parser-args (field)
   "Returns an argument list form for FIELD to be used by PARSE-FIELD
