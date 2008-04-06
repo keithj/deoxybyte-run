@@ -19,6 +19,7 @@
   (:use #:common-lisp #:cl-gp-utilities #:trivial-gray-streams)
   (:nicknames #:iou)
   (:documentation "IO utilities.")
+  (:shadow #:type-of)
   (:export
    ;; Specials
    #:*empty-field*

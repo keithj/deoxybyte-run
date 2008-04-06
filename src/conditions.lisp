@@ -17,6 +17,48 @@
 
 (in-package :cl-io-utilities)
 
+;;; Command line interface conditions
+(define-condition cli-error (error)
+  ())
+
+(define-condition cli-warning (warning)
+  ())
+
+(define-condition missing-required-option (cli-error)
+  ((option :initarg :option
+           :reader option-of
+           :documentation "The missing option."))
+  (:report (lambda (condition stream)
+             (format stream "Missing required option --~a."
+                     (option-of condition)))))
+
+(define-condition incompatible-argument (cli-error)
+  ((option :initarg :option
+           :reader option-of
+           :documentation "The option for which the bad argument was
+supplied.")
+   (type :initarg :type
+         :reader type-of
+         :documentation "The expected type of option argument.")
+   (argument :initarg :argument
+             :reader argument-of
+             :documentation "The bad argument."))
+  (:report (lambda (condition stream)
+             (format stream "Invalid argument ~a supplied for option --~a (~a)."
+                     (argument-of condition)
+                     (option-of condition) 
+                     (type-of condition)))))
+
+(define-condition unknown-option (cli-warning)
+  ((option :initarg :option
+           :reader option-of
+           :documentation "The option for which the bad argument was
+supplied."))
+  (:report (lambda (condition stream)
+             (format stream "unknown argument --~a"
+                     (option-of condition)))))
+
+
 ;;; Parse conditions
 (define-condition general-parse-error (error)
   ((text :initform nil

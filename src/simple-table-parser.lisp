@@ -67,7 +67,7 @@ optional: CONSTRAINTS - a list of field constraint definition lists. The
            (unless (= ,field-count (length field-starts))
              (error 'malformed-record-error :text
                     (format nil
-                            "Invalid line: ~d fields instead of ~d: ~s."
+                            "invalid line: ~d fields instead of ~d: ~s."
                             (length field-starts) ,field-count line)))
            (let ((parsed-fields
                   (loop
@@ -97,7 +97,7 @@ optional: CONSTRAINTS - a list of field constraint definition lists. The
                         collect (car result))))
                (when failed-constraints
                  (error 'record-validation-error :text
-                        (format nil "Constraints ~a failed on line ~s."
+                        (format nil "constraints ~a failed on line ~s."
                                 failed-constraints line))))
              parsed-fields))))))
 
@@ -115,7 +115,7 @@ START and END."
           (subseq str start end)
         (parse-error (condition)
           (error 'malformed-field-error :text
-                 (format nil "Invalid ~a field ~a: ~a" field-name
+                 (format nil "invalid ~a field ~a: ~a" field-name
                          (subseq str start end) condition)))))))
 
 (defun default-integer-parser (field-name str &key (start 0) end
@@ -132,7 +132,7 @@ START and END."
           (parse-integer str :start start :end end)
         (parse-error (condition)
           (error 'malformed-field-error :text
-                 (format nil "Invalid ~a field ~a: ~a" field-name
+                 (format nil "invalid ~a field ~a: ~a" field-name
                          (subseq str start end) condition)))))))
 
 (defun default-float-parser (field-name str &key (start 0) end
@@ -149,7 +149,7 @@ END."
           (parse-float str :start start :end end)
         (parse-error (condition)
           (error 'malformed-field-error :text
-                 (format nil "Invalid ~a field ~a: ~a" field-name
+                 (format nil "invalid ~a field ~a: ~a" field-name
                          (subseq str start end) condition)))))))
   
 (defun parse-field (field-name line start end null-str parser
@@ -165,7 +165,9 @@ and VALIDATOR."
         (handler-case
             (funcall validator parsed-value)
           (error (condition)
-            (error 'warning "Oops ~a ~a." field-name parsed-value)))
+            (error 'field-validation-error :text
+                   (format nil "validator for field ~a raised an error on value ~a: ~a"
+                           field-name parsed-value condition))))
       parsed-value)))
 
 (defun validate-record (name fields validator &rest field-names)
@@ -174,11 +176,12 @@ the result of applying VALIDATOR to values from the alist of parsed
 FIELDS named by FIELD-NAMES."
   (let ((field-values (mapcar #'(lambda (key)
                                   (assocdr key fields)) field-names)))
-    (cons name (not (null
-                     (handler-case
-                         (apply validator field-values)
-                       (error (condition)
-                         nil)))))))
+    (cons name (handler-case
+                   (apply validator field-values)
+                 (error (condition)
+                   (error 'record-validation-error :text
+                          (format nil "validator for ~a raised an error on field values ~a: ~a"
+                                  name field-values condition)))))))
 
 (defun collect-parser-args (field)
   "Returns an argument list form for FIELD to be used by PARSE-FIELD

@@ -106,8 +106,9 @@ must be either CHARACTER or (UNSIGNED-BYTE 8)."
   (unless (and (streamp stream)
                (input-stream-p stream)
                (open-stream-p stream))
-    (error "Invalid STREAM ~a: expected an open input-stream."
-           stream))
+    (error 'invalid-argument-error
+           :params 'stream :args stream
+           :text "expected an open input-stream"))
   (let ((elt-type (stream-element-type stream)))
     (cond ((subtypep elt-type 'character)
            (make-instance 'character-line-input-stream

@@ -17,7 +17,6 @@
 
 (in-package :cl-io-utilities)
 
-
 (defun parse-command-line (args options)
   "
  Purpose: Parses a system command line to create a mapping of option
@@ -32,36 +31,37 @@
           A list of remaining arguments.
           A list of unknown arguments.
 "
-  (multiple-value-bind (remaining-args matched-args unknown-args)
+  (multiple-value-bind (remaining-args matched-args unmatched-args)
       (getopt:getopt args (getopt-options options))
-    (when unknown-args
-      (warn-unknown-args unknown-args))
+    (when unmatched-args
+      (warn-unmatched-args unmatched-args))
     (let ((parsed-args nil))
       (dolist (opt options)
         (let ((arg-value (assocdr (cli-opt-name opt)
                                   matched-args :test #'string=)))
           (cond ((and (cli-opt-required-p opt)
                       (null arg-value))
-                 (error "Option ~a is required." (cli-opt-name opt)))
+                 (error 'missing-required-option
+                        :option (cli-opt-name opt)))
                 ((cli-arg-parser opt)
                  (setf parsed-args
                        (acons (cli-opt-keyword opt)
-                              (funcall (cli-arg-parser opt) arg-value)
+                              (parse-value-safely opt arg-value)
                               parsed-args)))
               (t
                (setf parsed-args
                      (acons (cli-opt-keyword opt)
                             arg-value
                             parsed-args))))))
-      (values parsed-args remaining-args unknown-args))))
-
+      (values parsed-args remaining-args unmatched-args))))
 
 (defun cli-option (keyword &key name required-option required-argument
                    argument-type documentation)
   (when (and required-option (null argument-type))
-    (error (msg "The required option --~a is incompatible"
-                "with an argument type of ~a.")
-           name argument-type))
+    (error 'invalid-argument-error
+           :params '(required-option argument-type)
+           :args (list required-option argument-type)
+           :text "this type is incompatible with a required argument"))
   (let ((argument-parser (ecase argument-type
                            (:string nil)
                            (:integer #'parse-integer)
@@ -108,9 +108,19 @@ keyword OPTION-KEYWORD."
                 (list (cli-opt-name opt)
                       (getopt-keyword opt))) options)))
 
-(defun warn-unknown-args (unknown-args)
+(defun warn-unmatched-args (unmatched-args)
   "Prints a warning message to *ERROR-OUTPUT* describing
-UNKNOWN-ARGS."
-  (format *error-output* "Warning: unknown arguments ~a."
-          (mapcar #'(lambda (a)
-                      (format nil "--~a" a)) unknown-args)))
+UNMATCHED-ARGS."
+  (dolist (arg unmatched-args)
+    (warn 'unknown-option :option arg)))
+
+(defun parse-value-safely (option value)
+  "Returns a parsed VALUE of the correct Lisp type for OPTION or
+raises an incompatible-argument error."
+  (handler-case
+      (funcall (cli-arg-parser option) value)
+    (parse-error (condition)
+      (error 'incompatible-argument
+             :option (cli-opt-name option)
+             :type (cli-arg-type option)
+             :argument value))))
