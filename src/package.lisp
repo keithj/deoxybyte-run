@@ -43,10 +43,9 @@
    #:parse-float
    #:default-integer-parser
    #:default-float-parser
-
    #:parse-command-line
    #:cli-option
-   #:cli-opt-keyword
+   #:cli-opt-key
    #:cli-opt-name
    #:cli-opt-required-p
    #:cli-opt-documentation

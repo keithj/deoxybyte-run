@@ -22,35 +22,43 @@
 
 (defmacro define-line-parser (parser-name delimiter fields
                               &optional constraints)
-"
- Purpose: Defines a line parser function that splits lines and then
-          parses and validates fields according to the FEILDS contraints
-          and validates combinations of fields according to CONSTRAINTS. 
+"Defines a line parser function that splits lines and then parses and
+validates fields according to the FIELDS contraints and validates
+combinations of fields according to CONSTRAINTS.
 
-    args: PARSER-NAME - a symbol naming the new function.
-          DELIMITER - a character used to split the lines being parsed.
-          FIELDS - a list of field definition lists. The form of a
-          definition list is (symbolic-field-name &keys type ignore parser
-          validator null-str) which indicates the symbol to which the parsed
-          field value will be stored in the alist returned by the function
-          PARSER-NAME, the expected type of the field value (:string,
-          :integer or :float, defaulting to :string), an optional boolean
-          flag indicating that the field should be ignored, an optional
-          parser function (defaults to a pass-through string parser), an
-          optional validator function that returns T when the parsed field
-          is valid and an optional string to indicate an null field (defaults
-          to *EMPTY-FIELD*, an empty string).
+Arguments:
 
-optional: CONSTRAINTS - a list of field constraint definition lists. The
-          form of a constraint definition list is (symbolic-constraint-name
-          (symbolic-field-name list) validator). The symbolic-field-name list
-          should contain names of one or more fields and the validator must
-          then be a function which accepts the parsed values of those fields
-          in the same order and returns T when those fields have acceptable
-          values.
+- parser-name (symbol): a symbol naming the new function.
+- delimiter (character): a character used to split the lines being
+parsed.
 
- Returns: A line parser function.
-"
+- fields (list list): a list of field definition lists. The form of a
+definition list is
+
+;;; (symbolic-field-name &keys type ignore parser validator null-str)
+
+which indicates the symbol to which the parsed field value will be
+stored in the alist returned by the function
+
+- parser-name (symbol): the expected type of the field value ( :string,
+:integer or :float, defaulting to :string), an optional boolean flag
+indicating that the field should be ignored, an optional parser
+function (defaults to a pass-through string parser), an optional
+validator function that returns T when the parsed field is valid and
+an optional string to indicate an null field (defaults to
+{defparameter *empty-field*} ).
+
+Optional:
+
+- constraints (list list): a list of field constraint definition
+lists. The form of a constraint definition list is
+
+;;; (symbolic-constraint-name (symbolic-field-name list) validator)
+
+The symbolic-field-name list should contain names of one or more
+fields and the validator must then be a function which accepts the
+parsed values of those fields in the same order and returns T when
+those fields have acceptable values."
   (let ((field-count (length fields))
         (field-names (mapcar #'car fields))
         (field-args (mapcar #'collect-parser-args fields))

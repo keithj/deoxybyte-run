@@ -18,14 +18,17 @@
 (in-package :cl-io-utilities)
 
 (defconstant +byte-buffer-size+ 8192
-  "Buffer size for binary-line-input-stream internal buffer.")
+  "Buffer size for {defclass binary-line-input-stream} internal
+buffer.")
 
 (deftype byte-buffer ()
-  "Buffer type for binary-line-input-stream internal buffer."
+  "Buffer type for {defclass binary-line-input-stream} internal
+buffer."
   `(simple-array (unsigned-byte 8) (,+byte-buffer-size+)))
 
 (deftype byte-buffer-index ()
-  "Index type for binary-line-input-stream internal buffer."
+  "Index type for {defclass binary-line-input-stream} internal
+buffer."
   `(integer 0 ,+byte-buffer-size+))
 
 
@@ -41,7 +44,8 @@ back into a stack to be re-read."))
                                        line-input-stream
                                        fundamental-character-input-stream)
   ()
-  (:documentation "A line-input-stream whose lines are strings."))
+  (:documentation "A {defclass line-input-stream} whose lines are
+strings."))
 
 (defclass binary-line-input-stream (wrapped-stream
                                     line-input-stream
@@ -61,18 +65,19 @@ the buffer from the stream.")
            :accessor offset-of
            :documentation "The offset in the byte buffer from which
 the next byte is to be read."))
-  (:documentation "A line-input-stream whose lines are arrays of
-bytes. Allows buffered reading of lines of (unsigned-byte 8) from a
-stream."))
+  (:documentation "A {defclass line-input-stream} whose lines are
+arrays of bytes. Allows buffered reading of lines of (unsigned-byte 8)
+from a stream."))
 
 
 ;;; line-input-stream generic functions
 (defgeneric more-lines-p (line-input-stream)
-  (:documentation "Returns T if LINE-INPUT-STREAM contains unread
-data."))
+  (:documentation "Returns T if {defclass line-input-stream} contains
+unread data."))
 
 (defgeneric push-line (line-input-stream line)
-  (:documentation "Pushes LINE back into LINE-INPUT-STREAM."))
+  (:documentation "Pushes LINE back into {defclass line-input-stream}
+."))
 
 (defgeneric find-line (line-input-stream test &optional max-lines)
   (:documentation "Iterates through lines read from LINE-INPUT-STREAM
@@ -100,9 +105,9 @@ actually read."))
 
 ;;; line-input-stream constructor
 (defun make-line-input-stream (stream)
-  "Returns a new CHARACTER-LINE-INPUT-STREAM or
-BINARY-LINE-INPUT-STREAM wrapping STREAM. The element type of STREAM
-must be either CHARACTER or (UNSIGNED-BYTE 8)."
+  "Returns a new {defclass character-line-input-stream} or
+{defclass binary-line-input-stream} wrapping STREAM. The element type
+of STREAM must be either CHARACTER or (UNSIGNED-BYTE 8)."
   (unless (and (streamp stream)
                (input-stream-p stream)
                (open-stream-p stream))

@@ -18,19 +18,32 @@
 (in-package :cl-io-utilities)
 
 (defun parse-command-line (args options)
-  "
- Purpose: Parses a system command line to create a mapping of option
-          keywords to Lisp objects.
+"Parses a system command line to create a mapping of option keywords
+to Lisp objects.
 
-    args: ARGS - a list of strings
-          OPTIONS - a list of command line options created by the
-          CLI-OPTION function.
+Example:
 
- Returns: An alist of parsed arguments from which argument values
-          may be read using the ARG-VALUE function.
-          A list of remaining arguments.
-          A list of unknown arguments.
-"
+;;; (parse-command-line (list \"--sample-name\" \"sample one\")
+;;;                     (list (cli-option
+;;;                            :sname
+;;;                            :name \"sample-name\"
+;;;                            :argument-type :string
+;;;                            :required-option t
+;;;                            :documentation
+;;;                             \"The sample name.\")))
+
+Arguments:
+
+- args (list string): a list of system command line arguments.
+- options (list object): a list of command line options created by the
+{defun cli-option} function.
+
+Returns:
+
+- parsed arguments from which argument values may be read using the
+{defun cli-arg-value} function (alist).
+- remaining arguments (list string).
+- unknown arguments (list string)."
   (multiple-value-bind (remaining-args matched-args unmatched-args)
       (getopt:getopt args (getopt-options options))
     (when unmatched-args
@@ -45,18 +58,57 @@
                         :option (cli-opt-name opt)))
                 ((cli-arg-parser opt)
                  (setf parsed-args
-                       (acons (cli-opt-keyword opt)
+                       (acons (cli-opt-key opt)
                               (parse-value-safely opt arg-value)
                               parsed-args)))
               (t
                (setf parsed-args
-                     (acons (cli-opt-keyword opt)
+                     (acons (cli-opt-key opt)
                             arg-value
                             parsed-args))))))
       (values parsed-args remaining-args unmatched-args))))
 
-(defun cli-option (keyword &key name required-option required-argument
+(defun print-help (help-message options
+                   &optional (stream *error-output*))
+  (format stream "~{~<~%~,70:;~a~> ~}~%"
+          (loop for word in (split-sequence:split-sequence
+                             #\Space help-message) collect word))
+  (terpri stream)
+  (write-line "  Options:" stream)
+  (dolist (opt options)
+    (print-option-help opt stream)
+    (terpri stream)))
+
+(defun cli-option (key &key name required-option required-argument
                    argument-type documentation)
+  "Returns an object defining a command line interface option.
+
+Example:
+
+;;; (cli-option
+;;;  :sname
+;;;  :name \"sample-name\"
+;;;  :argument-type :string
+;;;  :required-option t
+;;;  :documentation
+;;;  \"The sample name.\")
+
+Arguments:
+
+- KEY (symbol): a key symbol by which the option will be known.
+- :NAME (string): the full name of the option to be used on the
+command line.
+- :REQUIRED-OPTION (boolean): indicates whether the option is required
+on the command line.
+- :REQUIRED-ARGUMENT (boolean): indicates whether the option, if used,
+requires an argument on the command line.
+- :ARGUMENT-TYPE (symbol): indicates the type of argument accepted for
+the option (:string :integer :float NIL).
+- :DOCUMENTATION (string): a documentation string that may be printed
+as command line help for the option.
+
+Returns:
+- A cli-option (list)."
   (when (and required-option (null argument-type))
     (error 'invalid-argument-error
            :params '(required-option argument-type)
@@ -67,34 +119,53 @@
                            (:integer #'parse-integer)
                            (:float #'parse-float)
                            ((nil) nil))))
-    (list keyword name required-option required-argument
-          argument-type argument-parser documentation)))
+    (list key name required-option required-argument argument-type
+          argument-parser documentation)))
 
-(defun cli-opt-keyword (option)
+(defun cli-opt-key (option)
+  "Returns the key symbol for OPTION."
   (first option))
 
 (defun cli-opt-name (option)
+  "Returns the name of OPTION."
   (second option))
 
 (defun cli-opt-required-p (option)
+  "Returns T if OPTION is required on the command line, or NIL
+otherwise."
   (third option))
 
 (defun cli-arg-required-p (option)
+  "Returns T if OPTION is requires an argument on the command line, or
+NIL otherwise."
   (fourth option))
 
 (defun cli-arg-type (option)
+  "Returns the type of the argument of OPTION."
   (fifth option))
 
 (defun cli-arg-parser (option)
+  "Returns an argument parser function for OPTION that is capable of
+parsing an argument string to the correct type."
   (sixth option))
 
 (defun cli-opt-documentation (option)
+  "Returns the command line documentation string for OPTION."
   (seventh option))
 
-(defun cli-arg-value (option-keyword parsed-args)
+(defun cli-arg-value (option-key parsed-args)
   "Returns the value from PARSED-ARGS for the option named by the
-keyword OPTION-KEYWORD."
-  (assocdr option-keyword parsed-args))
+symbol OPTION-KEY."
+  (assocdr option-key parsed-args))
+
+(defun print-option-help (option &optional (stream *error-output*))
+  "Prints the help string for OPTION to STREAM (which defaults to
+*ERROR-OUTPUT*)."
+  (format stream "  --~15a <~a~:[~;, required~]>~%    ~a~%"
+          (cli-opt-name option)
+          (cli-arg-type option)
+          (cli-opt-required-p option)
+          (cli-opt-documentation option)))
 
 (defun getopt-options (options)
   (flet ((getopt-keyword (opt)
@@ -116,7 +187,7 @@ UNMATCHED-ARGS."
 
 (defun parse-value-safely (option value)
   "Returns a parsed VALUE of the correct Lisp type for OPTION or
-raises an incompatible-argument error."
+raises an {define-condition incompatible-argument} error."
   (handler-case
       (funcall (cli-arg-parser option) value)
     (parse-error (condition)

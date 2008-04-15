@@ -29,7 +29,8 @@
     :author "Keith James"
     :version "0.1.0"
     :licence "GPL v3"
-    :depends-on (:cl-gp-utilities :trivial-gray-streams :getopt)
+    :depends-on (:cl-gp-utilities :split-sequence :trivial-gray-streams
+                                  :getopt)
     :components
     ((:module :cl-io-utilities
               :serial t

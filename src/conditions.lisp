@@ -19,10 +19,12 @@
 
 ;;; Command line interface conditions
 (define-condition cli-error (error)
-  ())
+  ()
+  (:documentation "The parent type of all CLI error conditions."))
 
 (define-condition cli-warning (warning)
-  ())
+  ()
+  (:documentation "The parent type of all CLI warning conditions."))
 
 (define-condition missing-required-option (cli-error)
   ((option :initarg :option
@@ -30,7 +32,9 @@
            :documentation "The missing option."))
   (:report (lambda (condition stream)
              (format stream "Missing required option --~a."
-                     (option-of condition)))))
+                     (option-of condition))))
+  (:documentation "An error that is raised when a required option is
+missing."))
 
 (define-condition incompatible-argument (cli-error)
   ((option :initarg :option
@@ -47,7 +51,9 @@ supplied.")
              (format stream "Invalid argument ~a supplied for option --~a (~a)."
                      (argument-of condition)
                      (option-of condition) 
-                     (type-of condition)))))
+                     (type-of condition))))
+  (:documentation "An error that is raised when an option is supplied
+with an argument of the wrong type."))
 
 (define-condition unknown-option (cli-warning)
   ((option :initarg :option
@@ -67,28 +73,37 @@ supplied."))
          :documentation "Error message text."))
   (:report (lambda (condition stream)
              (format stream "General parse error~@[: ~a~]"
-                     (text-of condition)))))
+                     (text-of condition))))
+  (:documentation "The parent type of all parse error conditions."))
 
 (define-condition malformed-record-error (general-parse-error)
   ()
   (:report (lambda (condition stream)
              (format stream "Malformed record error~@[: ~a~]"
-                     (text-of condition)))))
+                     (text-of condition))))
+  (:documentation "An error that is raised when a record is malformed
+for any reason."))
 
 (define-condition record-validation-error (malformed-record-error)
   ()
   (:report (lambda (condition stream)
              (format stream "Record validation error~@[: ~a~]"
-                     (text-of condition)))))
+                     (text-of condition))))
+  (:documentation "An error that is raised when a record fails
+validation of one or more of its parts."))
 
 (define-condition malformed-field-error (malformed-record-error)
   ()
   (:report (lambda (condition stream)
              (format stream "Malformed field error~@[: ~a~]"
-                     (text-of condition)))))
+                     (text-of condition))))
+  (:documentation "An error that is raised when a field-based record
+contains a malformed field within it."))
 
 (define-condition field-validation-error (malformed-field-error)
   ()
   (:report (lambda (condition stream)
              (format stream "Field validation error~@[: ~a~]"
-                     (text-of condition)))))
+                     (text-of condition))))
+  (:documentation "An error that is raised when a record field fails
+validation."))
