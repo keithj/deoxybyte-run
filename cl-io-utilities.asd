@@ -30,7 +30,7 @@
     :version "0.1.0"
     :licence "GPL v3"
     :depends-on (:cl-gp-utilities :split-sequence :trivial-gray-streams
-                                  :getopt)
+                                  :cl-fad :getopt)
     :components
     ((:module :cl-io-utilities
               :serial t
