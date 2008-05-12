@@ -26,6 +26,16 @@
   ()
   (:documentation "The parent type of all CLI warning conditions."))
 
+(define-condition unknown-command (cli-error)
+  ((command :initarg :command
+            :reader command-of
+            :documentation "The unknown command."))
+  (:report (lambda (condition stream)
+             (format stream "Unknown command ~a."
+                     (command-of condition))))
+  (:documentation "An error that is raised when the main command is
+not recognised."))
+
 (define-condition missing-required-option (cli-error)
   ((option :initarg :option
            :reader option-of

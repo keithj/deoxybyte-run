@@ -194,22 +194,22 @@
 
 ;; ;; This test fails on SBCL due to a bug in read-line (missing-newline-p)
 ;; (test missing-newline-p/line-buffer
-;;   (with-open-file (stream (method-name "data/test2.txt")
+;;   (with-open-file (stream (merge-pathnames "data/test2.txt")
 ;;                    :direction :input
 ;;                    :element-type 'base-char
 ;;                    :external-format :ascii)
-;;     (let ((lb (make-line-buffer stream))
+;;     (let ((s (make-line-input-stream stream))
 ;;           (lines '("1234567890"
 ;;                    "0987654321"
 ;;                    "abcdefghij"
 ;;                    "klmnopqrst")))
 ;;       (dolist (line (butlast lines))
 ;;         (multiple-value-bind (line2 missing-newline-p)
-;;             (pull-line lb)
+;;             (stream-read-line s)
 ;;           (is (equalp line line2))
 ;;           (is-false missing-newline-p)))
 ;;       (multiple-value-bind (line2 missing-newline-p)
-;;           (pull-line lb)
+;;           (stream-read-line s)
 ;;         (is (equalp (car (last lines)) line2))
 ;;         (is-true missing-newline-p)))))
 

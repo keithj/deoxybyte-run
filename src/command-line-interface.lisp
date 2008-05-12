@@ -68,8 +68,21 @@ Returns:
                             parsed-args))))))
       (values parsed-args remaining-args unmatched-args))))
 
-(defun print-help (help-message options
-                   &optional (stream *error-output*))
+(defun print-cli-help (help-message options
+                       &optional (stream *error-output*))
+  "Prints a help message and help for each avaliable option.
+
+Arguments:
+
+- help-message (string): a help message.
+- options (list object): a list of command line options created by the
+{defun cli-option} function from which the individual option
+documentation will be extracted for printing.
+
+Optional:
+
+- stream (stream): the stream to which the message will be printed
+(defaults to *ERROR-OUTOUT*)."
   (format stream "~{~<~%~,70:;~a~> ~}~%"
           (loop for word in (split-sequence:split-sequence
                              #\Space help-message) collect word))
@@ -95,19 +108,20 @@ Example:
 
 Arguments:
 
-- KEY (symbol): a key symbol by which the option will be known.
-- :NAME (string): the full name of the option to be used on the
+- key (symbol): a key symbol by which the option will be known.
+- :name (string): the full name of the option to be used on the
 command line.
-- :REQUIRED-OPTION (boolean): indicates whether the option is required
+- :required-option (boolean): indicates whether the option is required
 on the command line.
-- :REQUIRED-ARGUMENT (boolean): indicates whether the option, if used,
+- :required-argument (boolean): indicates whether the option, if used,
 requires an argument on the command line.
-- :ARGUMENT-TYPE (symbol): indicates the type of argument accepted for
+- :argument-type (symbol): indicates the type of argument accepted for
 the option (:string :integer :float NIL).
-- :DOCUMENTATION (string): a documentation string that may be printed
+- :documentation (string): a documentation string that may be printed
 as command line help for the option.
 
 Returns:
+
 - A cli-option (list)."
   (when (and required-option (null argument-type))
     (error 'invalid-argument-error

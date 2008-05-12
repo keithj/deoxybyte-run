@@ -41,6 +41,7 @@
                            (:file "streams")
                            (:file "line-input-stream")
                            (:file "command-line-interface")
+                           (:file "files-and-directories")
                            (:file "simple-table-parser")))))
 
 

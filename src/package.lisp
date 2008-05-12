@@ -24,6 +24,13 @@
    ;; Specials
    #:*empty-field*
    ;; Conditions
+   #:cli-error
+   #:cli-warning
+   #:unknown-command
+   #:missing-required-option
+   #:incompatible-argument
+   #:unknown-option
+
    #:general-parse-error
    #:malformed-record-error
    #:malformed-field-error
@@ -43,8 +50,11 @@
    #:parse-float
    #:default-integer-parser
    #:default-float-parser
+
    #:parse-command-line
+   #:print-cli-help
    #:cli-option
+   #:print-option-help
    #:cli-opt-key
    #:cli-opt-name
    #:cli-opt-required-p
