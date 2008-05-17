@@ -107,7 +107,7 @@ actually read."))
 (defun make-line-input-stream (stream)
   "Returns a new {defclass character-line-input-stream} or
 {defclass binary-line-input-stream} wrapping STREAM. The element type
-of STREAM must be either CHARACTER or (UNSIGNED-BYTE 8)."
+of STREAM must be eithera a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
   (unless (and (streamp stream)
                (input-stream-p stream)
                (open-stream-p stream))
@@ -155,7 +155,8 @@ of STREAM must be either CHARACTER or (UNSIGNED-BYTE 8)."
             matching-line-p
             (and (not (null max-lines))
                  (= line-count max-lines)))
-        (values line matching-line-p line-count))))
+        (values line matching-line-p line-count))
+    (format t "~a ~a~%" line-count line )))
 
 
 ;;; character-line-input-stream methods
@@ -174,13 +175,13 @@ of STREAM must be either CHARACTER or (UNSIGNED-BYTE 8)."
 (defmethod stream-read-line ((stream character-line-input-stream))
   (if (null (line-stack-of stream))
       (multiple-value-bind (line missing-newline-p)
-          (read-line (stream-of stream) nil nil)
+          (read-line (stream-of stream) nil :eof)
         (values line missing-newline-p))
     (pop (line-stack-of stream))))
 
 (defmethod more-lines-p ((stream character-line-input-stream))
   (or (line-stack-of stream)
-      (peek-char nil (stream-of stream) :eof nil)))
+      (peek-char nil (stream-of stream) nil :eof)))
 
 (defmethod push-line ((stream character-line-input-stream) (line string))
   (push line (line-stack-of stream)))
@@ -294,7 +295,7 @@ contents into a new fixed length array, which is returned."
   (let ((line (make-array (reduce #'+ chunks :key #'length)
                           :element-type '(unsigned-byte 8))))
     (loop
-       for chunk of-type (simple-array (unsigned-byte 8)) in chunks
+       for chunk of-type (simple-array (unsigned-byte 8) (*)) in chunks
        for chunk-length = (length chunk)
        with offset = 0
        do (unless (zerop chunk-length)

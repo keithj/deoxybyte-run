@@ -20,13 +20,13 @@
 (defparameter *default-tmpdir* "/tmp")
 
 (defun make-tmp-pathname (&optional (tmpdir *default-tmpdir*)
-                          (basename "") (suffix "tmp"))
+                          (basename "") (type "tmp"))
   "Returns a pathname suitable for use as a temporary file. The
 directory component of the new pathname is TMPDIR, defaulting to
 *DEFAULT-TMPDIR*. The NAME component of the new pathname is a
 concatenation of BASENAME, defaulting to an empty string, and a
 pseudo-random number. The type component of the new pathname is
-SUFFIX, defaulting to \"tmp\"."
+TYPE, defaulting to \"tmp\"."
   (unless (cl-fad:directory-exists-p tmpdir)
     (error 'invalid-argument-error
            :params 'tmpdir
@@ -36,4 +36,35 @@ SUFFIX, defaulting to \"tmp\"."
                    (make-pathname :directory '(:relative)
                                   :name (format nil "~a~a" basename
                                                 (random most-positive-fixnum))
-                                  :type suffix)))
+                                  :type type)))
+
+(defun pathname-generator (dir name &key type separator generator)
+  "Returns a function of zero arity that generates pathnames when
+called. The generated pathnames are relative to directory DIR and have
+a namestring composed of NAME, SEPARATOR (defaults to NIL) and a value
+taken from calling the function GENERATOR (defaults to a numeric
+generator starting from 0, incrementing by 1). TYPE may be used to
+specify the type of the new pathnames."
+  (let ((g (or generator (number-generator))))
+    (lambda ()
+      (merge-pathnames (fad:pathname-as-directory dir)
+                       (make-pathname :directory '(:relative)
+                                      :name (format nil "~a~@[~a~]~a" name
+                                                    separator (funcall g))
+                                      :type type)))))
+
+(defun pathname-extender (&key type separator generator)
+  "Returns a function of arity 1 that returns modified copies of a
+pathname argument. The pathname is modified by extending is
+namestring. The new namestring is composed of the original namestring
+SEPARATOR (defaults to NIL) and a value taken from calling the
+function GENERATOR (defaults to a numeric generator starting from 0,
+incrementing by 1). TYPE may be used to specify the type of the new
+pathname, otherwise the original type will be used."
+  (let ((g (or generator (number-generator))))
+    (lambda (pathname)
+      (make-pathname :directory (pathname-directory pathname)
+                     :name (format nil "~a~@[~a~]~a"
+                                   (pathname-name pathname)
+                                   separator (funcall g))
+                     :type (or type (pathname-type pathname))))))

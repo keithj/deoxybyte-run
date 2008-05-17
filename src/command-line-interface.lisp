@@ -205,6 +205,7 @@ raises an {define-condition incompatible-argument} error."
   (handler-case
       (funcall (cli-arg-parser option) value)
     (parse-error (condition)
+      (declare (ignore condition))
       (error 'incompatible-argument
              :option (cli-opt-name option)
              :type (cli-arg-type option)

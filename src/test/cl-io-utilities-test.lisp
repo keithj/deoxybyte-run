@@ -275,3 +275,21 @@
         (is (eql :eof line))
         (is-false found)
         (is (= 5 line-count))))))
+
+(test make-tmp-pathname
+  ;; Test defaults
+  (is-true (pathnamep (make-tmp-pathname)))
+  (is (string= "/tmp/" (directory-namestring (make-tmp-pathname))))
+  (is (integerp (parse-integer (pathname-name (iou:make-tmp-pathname)))))
+  (is (string= "tmp" (pathname-type (make-tmp-pathname))))
+  ;; Test optional arguments
+  (is-true (string= "/" (directory-namestring (make-tmp-pathname "/"))))
+  (is-true (string= "foo" (pathname-name (make-tmp-pathname "/tmp" "foo"))
+                    :end2 3))
+  (is-true (string= "bar" (pathname-type
+                           (make-tmp-pathname "/tmp" "foo" "bar"))))
+  ;; Test error condition
+  (let ((bad-dir "/this-directory-does-not-exist/"))
+    (is-true (and (not (fad:directory-exists-p bad-dir))
+                  (signals gpu:invalid-argument-error
+                    (make-tmp-pathname bad-dir))))))

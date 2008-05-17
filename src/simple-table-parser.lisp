@@ -68,7 +68,7 @@ those fields have acceptable values."
     `(progn
        (defun ,parser-name (line)
          (declare (optimize (speed 3)))
-         (declare (type simple-base-string line))
+         (declare (type simple-string line))
          (multiple-value-bind (field-starts field-ends)
              (vector-split-indices ,delimiter line)
            (declare (type list field-starts))
@@ -115,7 +115,7 @@ those fields have acceptable values."
 between START and END, or NIL if STR is STRING= to NULL-STR between
 START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-base-string str null-str))
+  (declare (type simple-string str null-str))
   (let ((end (or end (length str))))
     (if (string= null-str str :start2 start :end2 end)
         nil
@@ -132,7 +132,7 @@ START and END."
 between START and END, or NIL if STR is STRING= to NULL-STR between
 START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-base-string str null-str))
+  (declare (type simple-string str null-str))
   (let ((end (or end (length str))))
     (if (string= null-str str :start2 start :end2 end)
         nil
@@ -149,7 +149,7 @@ START and END."
 START and END, or NIL if STR is STRING= to NULL-STR between START and
 END."
   (declare (optimize (speed 3)))
-  (declare (type simple-base-string str null-str))
+  (declare (type simple-string str null-str))
   (let ((end (or end (length str))))
     (if (string= null-str str :start2 start :end2 end)
         nil

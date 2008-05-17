@@ -64,6 +64,8 @@
    #:cli-arg-parser
    #:cli-arg-value
    #:make-tmp-pathname
+   #:pathname-generator
+   #:pathname-extender
 
    ;; Macros
    #:define-line-parser))
