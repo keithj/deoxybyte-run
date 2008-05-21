@@ -146,7 +146,7 @@
         (is-false missing-newline-p))
       (multiple-value-bind (line2 missing-newline-p)
           (stream-read-line s)
-        (is-false line2)
+        (is (eql :eof line2))
         (is-true missing-newline-p)))))
 
 (test stream-read-line/binary-line-input-stream
@@ -280,16 +280,20 @@
   ;; Test defaults
   (is-true (pathnamep (make-tmp-pathname)))
   (is (string= "/tmp/" (directory-namestring (make-tmp-pathname))))
-  (is (integerp (parse-integer (pathname-name (iou:make-tmp-pathname)))))
+  (is (integerp (parse-integer (pathname-name (make-tmp-pathname)))))
   (is (string= "tmp" (pathname-type (make-tmp-pathname))))
   ;; Test optional arguments
-  (is-true (string= "/" (directory-namestring (make-tmp-pathname "/"))))
-  (is-true (string= "foo" (pathname-name (make-tmp-pathname "/tmp" "foo"))
+  (is-true (string= "/" (directory-namestring (make-tmp-pathname
+                                               :tmpdir "/"))))
+  (is-true (string= "foo" (pathname-name (make-tmp-pathname :tmpdir "/tmp"
+                                                            :basename "foo"))
                     :end2 3))
   (is-true (string= "bar" (pathname-type
-                           (make-tmp-pathname "/tmp" "foo" "bar"))))
+                           (make-tmp-pathname :tmpdir "/tmp"
+                                              :basename "foo"
+                                              :type "bar"))))
   ;; Test error condition
   (let ((bad-dir "/this-directory-does-not-exist/"))
     (is-true (and (not (fad:directory-exists-p bad-dir))
                   (signals gpu:invalid-argument-error
-                    (make-tmp-pathname bad-dir))))))
+                    (make-tmp-pathname :tmpdir bad-dir))))))

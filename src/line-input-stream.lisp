@@ -155,8 +155,7 @@ of STREAM must be eithera a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
             matching-line-p
             (and (not (null max-lines))
                  (= line-count max-lines)))
-        (values line matching-line-p line-count))
-    (format t "~a ~a~%" line-count line )))
+        (values line matching-line-p line-count))))
 
 
 ;;; character-line-input-stream methods

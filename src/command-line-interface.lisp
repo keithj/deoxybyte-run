@@ -17,9 +17,14 @@
 
 (in-package :cl-io-utilities)
 
+(defparameter *list-separator-char* #\,
+  "The separator character used in multi-value arguments.")
+
 (defun parse-command-line (args options)
 "Parses a system command line to create a mapping of option keywords
-to Lisp objects.
+to Lisp objects. Where multiple values are to be accepted for an
+argument e.g. :integer-list , they must be comma-separated on the
+command line e.g. 1,2,3,4.
 
 Example:
 
@@ -81,8 +86,12 @@ documentation will be extracted for printing.
 
 Optional:
 
-- stream (stream): the stream to which the message will be printed
-(defaults to *ERROR-OUTOUT*)."
+- stream (stream): the stream to which the message will be printed.
+Defaults to *ERROR-OUTOUT*.
+
+Returns:
+
+- T."
   (format stream "~{~<~%~,70:;~a~> ~}~%"
           (loop for word in (split-sequence:split-sequence
                              #\Space help-message) collect word))
@@ -90,7 +99,8 @@ Optional:
   (write-line "  Options:" stream)
   (dolist (opt options)
     (print-option-help opt stream)
-    (terpri stream)))
+    (terpri stream))
+  t)
 
 (defun cli-option (key &key name required-option required-argument
                    argument-type documentation)
@@ -109,6 +119,9 @@ Example:
 Arguments:
 
 - key (symbol): a key symbol by which the option will be known.
+
+Key:
+
 - :name (string): the full name of the option to be used on the
 command line.
 - :required-option (boolean): indicates whether the option is required
@@ -116,7 +129,8 @@ on the command line.
 - :required-argument (boolean): indicates whether the option, if used,
 requires an argument on the command line.
 - :argument-type (symbol): indicates the type of argument accepted for
-the option (:string :integer :float NIL).
+the option (:string :character :integer :float :string-list
+:character-list :integer-list :float-list NIL).
 - :documentation (string): a documentation string that may be printed
 as command line help for the option.
 
@@ -130,8 +144,13 @@ Returns:
            :text "this type is incompatible with a required argument"))
   (let ((argument-parser (ecase argument-type
                            (:string nil)
+                           (:character #'parse-character)
                            (:integer #'parse-integer)
                            (:float #'parse-float)
+                           (:string-list #'parse-string-list)
+                           (:character-list #'parse-character-list)
+                           (:integer-list #'parse-integer-list)
+                           (:float-list #'parse-float-list)
                            ((nil) nil))))
     (list key name required-option required-argument argument-type
           argument-parser documentation)))
@@ -210,3 +229,37 @@ raises an {define-condition incompatible-argument} error."
              :option (cli-opt-name option)
              :type (cli-arg-type option)
              :argument value))))
+
+(defun parse-character (string)
+  "Returns a character parsed from STRING of length 1 character."
+  (let ((trimmed (string-trim '(#\Space) string)))
+    (if (= 1 (length trimmed))
+        (char trimmed 0)
+      (error 'parse-error "expected a string of one character"))))
+
+(defun parse-string-list (string)
+  "Returns a list of strings parsed from STRING by splitting on the
+*list-separator-char* character."
+  (split-sequence:split-sequence *list-separator-char* string
+                                 :remove-empty-subseqs t))
+
+(defun parse-integer-list (string)
+  "Returns a list of integers parsed from STRING after splitting on
+the *list-separator-char* character."
+  (mapcar #'parse-integer
+          (split-sequence:split-sequence *list-separator-char* string
+                                         :remove-empty-subseqs t)))
+
+(defun parse-character-list (string)
+  "Returns a list of integers parsed from STRING after splitting on
+the *list-separator-char* character."
+  (mapcar #'parse-character
+          (split-sequence:split-sequence *list-separator-char* string
+                                         :remove-empty-subseqs t)))
+
+(defun parse-float-list (string)
+  "Returns a list of floats parsed from STRING after splitting on the
+*list-separator-char* character."
+  (mapcar #'parse-float
+          (split-sequence:split-sequence *list-separator-char* string
+                                         :remove-empty-subseqs t)))

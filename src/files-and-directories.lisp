@@ -19,7 +19,7 @@
 
 (defparameter *default-tmpdir* "/tmp")
 
-(defun make-tmp-pathname (&optional (tmpdir *default-tmpdir*)
+(defun make-tmp-pathname (&key (tmpdir *default-tmpdir*)
                           (basename "") (type "tmp"))
   "Returns a pathname suitable for use as a temporary file. The
 directory component of the new pathname is TMPDIR, defaulting to
@@ -34,8 +34,9 @@ TYPE, defaulting to \"tmp\"."
            :text "temporary file directory does not exist"))
   (merge-pathnames (cl-fad:pathname-as-directory tmpdir)
                    (make-pathname :directory '(:relative)
-                                  :name (format nil "~a~a" basename
-                                                (random most-positive-fixnum))
+                                  :name
+                                  (format nil "~a~a" basename
+                                          (random most-positive-fixnum))
                                   :type type)))
 
 (defun pathname-generator (dir name &key type separator generator)
@@ -49,8 +50,9 @@ specify the type of the new pathnames."
     (lambda ()
       (merge-pathnames (fad:pathname-as-directory dir)
                        (make-pathname :directory '(:relative)
-                                      :name (format nil "~a~@[~a~]~a" name
-                                                    separator (funcall g))
+                                      :name
+                                      (format nil "~a~@[~a~]~a" name
+                                              separator (funcall g))
                                       :type type)))))
 
 (defun pathname-extender (&key type separator generator)

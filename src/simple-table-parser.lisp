@@ -31,7 +31,6 @@ Arguments:
 - parser-name (symbol): a symbol naming the new function.
 - delimiter (character): a character used to split the lines being
 parsed.
-
 - fields (list list): a list of field definition lists. The form of a
 definition list is
 
@@ -115,7 +114,7 @@ those fields have acceptable values."
 between START and END, or NIL if STR is STRING= to NULL-STR between
 START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-string str null-str))
+  (declare (type simple-base-string str null-str)) ; Maybe too strict?
   (let ((end (or end (length str))))
     (if (string= null-str str :start2 start :end2 end)
         nil
@@ -132,7 +131,7 @@ START and END."
 between START and END, or NIL if STR is STRING= to NULL-STR between
 START and END."
   (declare (optimize (speed 3)))
-  (declare (type simple-string str null-str))
+  (declare (type simple-base-string str null-str)) ; Maybe too strict?
   (let ((end (or end (length str))))
     (if (string= null-str str :start2 start :end2 end)
         nil
@@ -149,7 +148,7 @@ START and END."
 START and END, or NIL if STR is STRING= to NULL-STR between START and
 END."
   (declare (optimize (speed 3)))
-  (declare (type simple-string str null-str))
+  (declare (type simple-base-string str null-str)) ; Maybe too strict?
   (let ((end (or end (length str))))
     (if (string= null-str str :start2 start :end2 end)
         nil
