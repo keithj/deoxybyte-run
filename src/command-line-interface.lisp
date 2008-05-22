@@ -57,16 +57,23 @@ Returns:
       (dolist (opt options)
         (let ((arg-value (assocdr (cli-opt-name opt)
                                   matched-args :test #'string=)))
-          (cond ((and (cli-opt-required-p opt)
+          (cond ((and (cli-opt-required-p opt) ; missing opts
                       (null arg-value))
                  (error 'missing-required-option
                         :option (cli-opt-name opt)))
-                ((cli-arg-parser opt)
+                ((and (not (cli-arg-required-p opt)) ; boolean flags
+                      (assoc (cli-opt-name opt)
+                             matched-args :test #'string=))
+                 (setf parsed-args
+                       (acons (cli-opt-key opt)
+                              t
+                              parsed-args)))
+                ((cli-arg-parser opt) ; parseable strings
                  (setf parsed-args
                        (acons (cli-opt-key opt)
                               (parse-value-safely opt arg-value)
                               parsed-args)))
-              (t
+              (t ; plain strings
                (setf parsed-args
                      (acons (cli-opt-key opt)
                             arg-value
@@ -151,7 +158,7 @@ Returns:
                            (:character-list #'parse-character-list)
                            (:integer-list #'parse-integer-list)
                            (:float-list #'parse-float-list)
-                           ((nil) nil))))
+                           ((nil) nil)))) ; boolean
     (list key name required-option required-argument argument-type
           argument-parser documentation)))
 
