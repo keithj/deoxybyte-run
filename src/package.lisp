@@ -23,6 +23,7 @@
   (:export
    ;; Specials
    #:*empty-field*
+
    ;; Conditions
    #:cli-error
    #:cli-warning
@@ -36,15 +37,27 @@
    #:malformed-field-error
    #:record-validation-error
    #:record-field-error
+
    ;; Classes
    #:line-input-stream
    #:character-line-input-stream
    #:binary-line-input-stream
+
+   #:external-program
+
    ;; Generics
    #:push-line
    #:more-lines-p
    #:find-line
    #:text-of
+
+   #:program-of
+   #:args-of
+   #:process-of
+   #:input-stream-of
+   #:output-stream-of
+   #:error-stream-of
+
    ;; Functions
    #:make-line-input-stream
    #:parse-float
@@ -63,9 +76,12 @@
    #:cli-arg-type
    #:cli-arg-parser
    #:cli-arg-value
+
    #:make-tmp-pathname
    #:pathname-generator
    #:pathname-extender
+
+   #:external-merge-sort
 
    ;; Macros
    #:define-line-parser))

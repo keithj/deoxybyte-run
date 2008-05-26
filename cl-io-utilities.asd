@@ -27,13 +27,12 @@
 (defsystem cl-io-utilities
     :name "cl-io-utilities"
     :author "Keith James"
-    :version "0.1.0"
+    :version "0.2.0"
     :licence "GPL v3"
     :depends-on (:cl-gp-utilities :split-sequence :trivial-gray-streams
                                   :cl-fad :getopt)
     :components
-    ((:module :cl-io-utilities
-              :serial t
+    ((:module :core
               :pathname "src/"
               :components ((:file "package")
                            (:file "conditions")
@@ -42,7 +41,15 @@
                            (:file "line-input-stream")
                            (:file "command-line-interface")
                            (:file "files-and-directories")
-                           (:file "simple-table-parser")))))
+                           (:file "simple-table-parser")
+                           (:file "external-merge-sort")))
+     (:module :external-programs
+              :serial t
+              :pathname "src/external-program/"
+              :components ((:file "package")
+                           (:file "external-program")
+                           (:file "gnuplot"))
+              :depends-on (:core))))
 
 
 (in-package #:asdf)

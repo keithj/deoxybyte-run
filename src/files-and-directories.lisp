@@ -39,23 +39,31 @@ TYPE, defaulting to \"tmp\"."
                                           (random most-positive-fixnum))
                                   :type type)))
 
-(defun pathname-generator (dir name &key type separator generator)
+(defun make-pathname-gen (dir name &key type separator generator)
   "Returns a function of zero arity that generates pathnames when
 called. The generated pathnames are relative to directory DIR and have
 a namestring composed of NAME, SEPARATOR (defaults to NIL) and a value
 taken from calling the function GENERATOR (defaults to a numeric
 generator starting from 0, incrementing by 1). TYPE may be used to
 specify the type of the new pathnames."
-  (let ((g (or generator (number-generator))))
-    (lambda ()
-      (merge-pathnames (fad:pathname-as-directory dir)
-                       (make-pathname :directory '(:relative)
-                                      :name
-                                      (format nil "~a~@[~a~]~a" name
-                                              separator (funcall g))
-                                      :type type)))))
+  (let ((g (or generator (make-number-gen))))
+    (flet ((gen-pname (d n s g y)
+             (merge-pathnames
+              (fad:pathname-as-directory d)
+              (make-pathname :directory '(:relative)
+                             :name
+                             (format nil "~a~@[~a~]~a" n s (next g))
+                             :type y))))
+      (lambda (op)
+        (let ((current (gen-pname dir name separator g type)))
+          (ecase op
+            (:current current)
+            (:next (prog1
+                       current
+                     (setf current (gen-pname dir name separator g type))))
+            (:more t)))))))
 
-(defun pathname-extender (&key type separator generator)
+(defun make-pathname-ext (&key type separator generator)
   "Returns a function of arity 1 that returns modified copies of a
 pathname argument. The pathname is modified by extending is
 namestring. The new namestring is composed of the original namestring
@@ -63,10 +71,10 @@ SEPARATOR (defaults to NIL) and a value taken from calling the
 function GENERATOR (defaults to a numeric generator starting from 0,
 incrementing by 1). TYPE may be used to specify the type of the new
 pathname, otherwise the original type will be used."
-  (let ((g (or generator (number-generator))))
+  (let ((g (or generator (make-number-gen))))
     (lambda (pathname)
       (make-pathname :directory (pathname-directory pathname)
                      :name (format nil "~a~@[~a~]~a"
                                    (pathname-name pathname)
-                                   separator (funcall g))
+                                   separator (next g))
                      :type (or type (pathname-type pathname))))))

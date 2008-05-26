@@ -61,17 +61,18 @@ Returns:
                       (null arg-value))
                  (error 'missing-required-option
                         :option (cli-opt-name opt)))
-                ((and (not (cli-arg-required-p opt)) ; boolean flags
+                ((cli-arg-parser opt) ; parseable opt args
+                 (setf parsed-args
+                       (acons (cli-opt-key opt)
+                              (parse-value-safely opt arg-value)
+                              parsed-args)))
+                ((and (not (cli-opt-required-p opt)) ; boolean flags
+                      (not (cli-arg-required-p opt))
                       (assoc (cli-opt-name opt)
                              matched-args :test #'string=))
                  (setf parsed-args
                        (acons (cli-opt-key opt)
-                              t
-                              parsed-args)))
-                ((cli-arg-parser opt) ; parseable strings
-                 (setf parsed-args
-                       (acons (cli-opt-key opt)
-                              (parse-value-safely opt arg-value)
+                              '(t)
                               parsed-args)))
               (t ; plain strings
                (setf parsed-args
@@ -201,7 +202,7 @@ symbol OPTION-KEY."
 (defun print-option-help (option &optional (stream *error-output*))
   "Prints the help string for OPTION to STREAM (which defaults to
 *ERROR-OUTPUT*)."
-  (format stream "  --~15a <~a~:[~;, required~]>~%    ~a~%"
+  (format stream "  --~15a <~@[~a, ~]~:[optional~;required~]>~%    ~a~%"
           (cli-opt-name option)
           (cli-arg-type option)
           (cli-opt-required-p option)
