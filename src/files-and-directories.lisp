@@ -17,7 +17,8 @@
 
 (in-package :cl-io-utilities)
 
-(defparameter *default-tmpdir* "/tmp")
+(defparameter *default-tmpdir* "/tmp"
+  "The default temporary file directory.")
 
 (defun make-tmp-pathname (&key (tmpdir *default-tmpdir*)
                           (basename "") (type "tmp"))

@@ -55,12 +55,21 @@
 (in-package #:asdf)
 
 (defmethod perform ((op test-op) (c (eql (find-system
-                                          'cl-io-utilities))))
+                                          :cl-io-utilities))))
   (operate 'load-op :cl-io-utilities-test)
   (let ((*default-pathname-defaults* (component-pathname c)))
     (funcall (intern (string :run!) (string :fiveam))
              'cl-io-utilities-system:testsuite)))
 
 (defmethod operation-done-p ((op test-op) (c (eql (find-system
-                                                   'cl-io-utilities))))
+                                                   :cl-io-utilities))))
   nil)
+
+(defmethod perform ((op cldoc-op) (c (eql (find-system
+                                           :cl-io-utilities))))
+  (unless (find-package :cl-io-utilities)
+    (operate 'load-op :cl-io-utilities))
+  (let ((*default-pathname-defaults* (component-pathname c))
+        (fn-sym (intern (string ":extract-documentation") (string ":cldoc")))
+        (op-sym (intern (string ":html") (string ":cldoc"))))
+    (funcall fn-sym op-sym "./doc/html" c)))
