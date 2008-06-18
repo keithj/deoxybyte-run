@@ -42,6 +42,7 @@
    #:line-input-stream
    #:character-line-input-stream
    #:binary-line-input-stream
+   #:stream-filter-mixin
 
    #:external-program
 
@@ -50,6 +51,7 @@
    #:more-lines-p
    #:find-line
    #:text-of
+   #:test-of
 
    #:program-of
    #:args-of
@@ -78,8 +80,8 @@
    #:cli-arg-value
 
    #:make-tmp-pathname
-   #:pathname-generator
-   #:pathname-extender
+   #:make-pathname-gen
+   #:make-pathname-ext
 
    #:external-merge-sort
 

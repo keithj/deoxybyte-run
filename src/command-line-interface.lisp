@@ -1,4 +1,4 @@
-;;;
+;;;t
 ;;; Copyright (C) 2008 Keith James. All rights reserved.
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@
   "The separator character used in multi-value arguments.")
 
 (defun parse-command-line (args options)
-"Parses a system command line to create a mapping of option keywords
+  "Parses a system command line to create a mapping of option keywords
 to Lisp objects. Where multiple values are to be accepted for an
 argument e.g. :integer-list , they must be comma-separated on the
 command line e.g. 1,2,3,4.
@@ -74,32 +74,32 @@ Returns:
                        (acons (cli-opt-key opt)
                               '(t)
                               parsed-args)))
-              (t ; plain strings
-               (setf parsed-args
-                     (acons (cli-opt-key opt)
-                            arg-value
-                            parsed-args))))))
+                (t ; plain strings
+                 (setf parsed-args
+                       (acons (cli-opt-key opt)
+                              arg-value
+                              parsed-args))))))
       (values parsed-args remaining-args unmatched-args))))
 
 (defun print-cli-help (help-message options
                        &optional (stream *error-output*))
   "Prints a help message and help for each avaliable option.
 
-Arguments:
+ Arguments:
 
-- help-message (string): a help message.
-- options (list object): a list of command line options created by the
-{defun cli-option} function from which the individual option
-documentation will be extracted for printing.
+ - help-message (string): a help message.
+ - options (list object): a list of command line options created by the
+ {defun cli-option} function from which the individual option
+ documentation will be extracted for printing.
 
-Optional:
+ Optional:
 
-- stream (stream): the stream to which the message will be printed.
-Defaults to *ERROR-OUTOUT*.
+ - stream (stream): the stream to which the message will be printed.
+ Defaults to *ERROR-OUTOUT*.
 
-Returns:
+ Returns:
 
-- T."
+ - T."
   (format stream "~{~<~%~,70:;~a~> ~}~%"
           (loop for word in (split-sequence:split-sequence
                              #\Space help-message) collect word))
@@ -116,13 +116,13 @@ Returns:
 
 Example:
 
-;;; (cli-option
-;;;  :sname
-;;;  :name \"sample-name\"
-;;;  :argument-type :string
-;;;  :required-option t
-;;;  :documentation
-;;;  \"The sample name.\")
+ ;;; (cli-option
+ ;;;  :sname
+ ;;;  :name \"sample-name\"
+ ;;;  :argument-type :string
+ ;;;  :required-option t
+ ;;;  :documentation
+ ;;;  \"The sample name.\")
 
 Arguments:
 
@@ -132,6 +132,7 @@ Key:
 
 - :name (string): the full name of the option to be used on the
 command line.
+
 - :required-option (boolean): indicates whether the option is required
 on the command line.
 - :required-argument (boolean): indicates whether the option, if used,
@@ -173,7 +174,7 @@ Returns:
 
 (defun cli-opt-required-p (option)
   "Returns T if OPTION is required on the command line, or NIL
-otherwise."
+ otherwise."
   (third option))
 
 (defun cli-arg-required-p (option)
@@ -212,10 +213,10 @@ symbol OPTION-KEY."
   (flet ((getopt-keyword (opt)
            (cond ((cli-arg-required-p opt)
                   :required)
-                 ((null (cli-arg-type opt))
-                  :none)
-                 (t
-                  :optional))))
+                  ((null (cli-arg-type opt))
+                   :none)
+                  (t
+                   :optional))))
     (mapcar #'(lambda (opt)
                 (list (cli-opt-name opt)
                       (getopt-keyword opt))) options)))

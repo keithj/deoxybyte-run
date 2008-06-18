@@ -24,3 +24,12 @@
            :documentation "The underlying stream from which data are
 read."))
   (:documentation "A Gray-stream wrapping a standard Lisp stream."))
+
+(defclass stream-filter-mixin ()
+  ((test :initarg :test
+         :reader test-of
+         :documentation "A function designator for a test that returns
+T when the next datum read from the stream is to be ignored."))
+  (:documentation "A mixin that provides a filtering function for
+streams. Any data encountered while reading or writing for which the
+test returns T are ignored and skipped."))

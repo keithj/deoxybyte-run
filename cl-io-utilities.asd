@@ -69,7 +69,8 @@
                                            :cl-io-utilities))))
   (unless (find-package :cl-io-utilities)
     (operate 'load-op :cl-io-utilities))
+
   (let ((*default-pathname-defaults* (component-pathname c))
-        (fn-sym (intern (string ":extract-documentation") (string ":cldoc")))
-        (op-sym (intern (string ":html") (string ":cldoc"))))
+        (fn-sym (intern (string :extract-documentation) (string :cldoc)))
+        (op-sym (intern (string :html) (string :cldoc))))
     (funcall fn-sym op-sym "./doc/html" c)))

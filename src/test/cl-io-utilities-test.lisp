@@ -297,3 +297,24 @@
     (is-true (and (not (fad:directory-exists-p bad-dir))
                   (signals gpu:invalid-argument-error
                     (make-tmp-pathname :tmpdir bad-dir))))))
+
+
+(defun test-xy-plot ()
+  (let* ((plotter (gpt:run-gnuplot))
+         (x #(0 1 2 3 4 5 6 7 8 9))
+         (y #(1 2.5 3 4 5 6 6.5 4 3.2 3))
+         (plot (make-instance
+                'gpt:2d-plot
+                :title "Test title"
+                :x-axis (make-instance 'gpt:axis
+                                       :label "Test x label" :position :x)
+                :y-axis (make-instance 'gpt:axis
+                                       :label "Test y label" :position :y)
+                :series (make-instance 'gpt:xy-series
+                                       :x-values x
+                                       :y-values y
+                                       :style '(:linespoints
+                                                :smooth
+                                                :csplines)))))
+    (gpt:draw-plot plotter plot :terminal :x11)
+    (gpt:stop-gnuplot plotter)))
