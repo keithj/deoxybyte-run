@@ -43,10 +43,8 @@ to be rendered on the plot.")
    (legend :initform t
            :initarg :legend
            :accessor legend-of
-           :documentation "A specifier for the plot legend.")))
-
-(defclass 2d-plot (plot)
-  ((x-axis :initform nil
+           :documentation "A specifier for the plot legend.")
+   (x-axis :initform nil
            :initarg :x-axis
            :accessor x-axis-of
            :documentation "An axis object representing the x-axis.")
@@ -54,6 +52,12 @@ to be rendered on the plot.")
            :initarg :y-axis
            :accessor y-axis-of
            :documentation "An axis object representing the y-axis.")))
+
+(defclass 2d-plot (plot)
+  ())
+
+(defclass histogram (2d-plot)
+  ())
 
 (defclass axis ()
   ((position :initform nil
@@ -105,6 +109,23 @@ position and style.")))
              :args (list x-values y-values)
              :text "The x and y sequences are not the same length."))))
 
+(defclass category-series (series)
+  ((categories :initform nil
+               :initarg :categories
+               :accessor categories-of)
+   (values :initform nil
+           :initarg :values
+           :accessor values-of)))
+
+(defmethod initialize-instance :after ((series category-series) &key)
+  (with-slots (categories values) series
+    (unless (= (length categories) (length values))
+      (error 'invalid-argument-error
+             :params '(:categories :values)
+             :args (list categories values)
+             :text (msg "The category and value sequences"
+                        "are not the same length.")))))
+
 (defgeneric length-of (series)
   (:documentation "Returns the length of SERIES."))
 
@@ -114,10 +135,23 @@ position and style.")))
 (defgeneric format-series (plotter series)
   (:documentation "Renders SERIES using PLOTTER."))
 
-(defgeneric draw-plot (plotter plot &key terminal output))
+(defgeneric write-header (series stream)
+  (:documentation "Writes plotting metadata, consisting of a sequence
+of 'using' and 'with' statements for SERIES, to a Gnuplot STREAM."))
+
+(defgeneric write-header (series stream)
+  (:documentation "Writes plot data for SERIES to Gnuplot STREAM."))
+
+(defgeneric draw-plot (plotter plot &key terminal output)
+  (:documentation "Renders a single plot, that is, title, axes, legend
+and one or more series."))
 
 (defmethod length-of ((series xy-series))
   (length (x-values-of series)))
+
+(defmethod length-of ((series category-series))
+  (length (categories-of series)))
+
 
 (defmethod format-axis ((plotter gnuplot) (axis axis))
   (let ((stream (input-stream-of plotter)))
@@ -129,22 +163,50 @@ position and style.")))
       (when minor-tics
         (format stream "set ~(~a~)mtics ~a~%" position minor-tics)))))
 
-(defmethod format-series ((plotter gnuplot) (series xy-series))
-  (let ((stream (input-stream-of plotter)))
-    (format stream " ~@[with ~{~^~(~a~) ~}~]~%" (style-of series))
-    (loop
-       with x = (x-values-of series)
-       and y = (y-values-of series)
-       for i from 0 below (length-of series)
-       do (format stream "~a ~a~%" (elt x i) (elt y i))
-       finally (format stream "e~%"))))
+(defmethod header-of ((series series))
+  (format nil " '-'~@[ with ~{~^~(~a~) ~}~]" (style-of series)))
+
+(defmethod header-of ((series xy-series))
+  (format nil " '-'~@[ with ~{~^~(~a~) ~}~]" (style-of series)))
+
+(defmethod header-of ((series category-series))
+  (format nil " '-' using 2:xtic(1)~@[ with ~{~^~(~a~) ~}~]" (style-of series)))
+
 
 (defmethod format-series ((plotter gnuplot) (series list))
-  (dolist (s series)
-    (format-series plotter s)))
+  (let ((stream (input-stream-of plotter)))
+    (dolist (s (butlast series))
+      (write-string (header-of s) stream)
+      (write-string "," stream))
+    (write-string (header-of (car (last series))) stream)
+    (terpri stream)
+    (dolist (s series)
+      (write-data s stream))))
 
-(defmethod draw-plot ((plotter gnuplot) (plot 2d-plot)
-                      &key (terminal :x11) output)
+(defmethod format-series ((plotter gnuplot) (series xy-series))
+  (let ((stream (input-stream-of plotter)))
+    (write-string (header-of series) stream)
+    (terpri stream)
+    (write-data series stream)))
+
+(defmethod write-data ((series xy-series) (stream stream))
+  (loop
+     with x = (x-values-of series)
+     and y = (y-values-of series)
+     for i from 0 below (length-of series)
+     do (format stream "~a ~a~%" (elt x i) (elt y i))
+     finally (format stream "e~%")))
+
+(defmethod write-data ((series category-series) (stream stream))
+  (loop
+     with x = (categories-of series)
+     and y = (values-of series)
+     for i from 0 below (length-of series)
+     do (format stream "~a ~a~%" (elt x i) (elt y i))
+     finally (format stream "e~%")))
+
+(defmethod draw-plot :before ((plotter gnuplot) (plot 2d-plot)
+                              &key (terminal :x11) output)
   (let ((stream (input-stream-of plotter)))
     (with-slots (title x-axis y-axis series) plot
       (princ "set terminal " stream)
@@ -158,11 +220,22 @@ position and style.")))
           (format stream "set key ~{~^~(~a~) ~}~%" (legend-of plot))
         (format stream "set key off~%"))
       (format-axis plotter x-axis)
-      (format-axis plotter y-axis)
-      (format stream "plot \"-\"")
-      (format-series plotter (series-of plot)))))
+      (format-axis plotter y-axis))))
 
-(defmethod draw-plot :after ((plotter gnuplot) (plot 2d-plot)
+(defmethod draw-plot ((plotter gnuplot) (plot 2d-plot)
+                      &key (terminal :x11) output)
+  (let ((stream (input-stream-of plotter)))
+    (write-string "plot" stream)
+    (format-series plotter (series-of plot))))
+
+(defmethod draw-plot ((plotter gnuplot) (plot histogram)
+                      &key (terminal :x11) output)
+  (let ((stream (input-stream-of plotter)))
+    (write-line "set style data histogram" stream)
+    (write-string "plot" stream)
+    (format-series plotter (series-of plot))))
+
+(defmethod draw-plot :after ((plotter gnuplot) (plot plot)
                              &key terminal output)
   (declare (ignore terminal output))
   (force-output (input-stream-of plotter)))
@@ -178,4 +251,3 @@ GNUPLOT."
   (let ((stream (input-stream-of plotter)))
     (write-line "quit" stream))
   t)
-
