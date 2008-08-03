@@ -44,6 +44,7 @@ streams, such that they are always available via accessors and to
 allow creation of subclasses that handle these streams in defined
 ways."))
 
+#+sbcl
 (defmethod initialize-instance :after ((program external-program)
                                        &key debug)
   (let ((process (sb-ext:run-program (program-of program) (args-of program)
