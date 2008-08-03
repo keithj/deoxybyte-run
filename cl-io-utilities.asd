@@ -33,6 +33,7 @@
                                   :cl-fad :getopt)
     :components
     ((:module :core
+              :serial t
               :pathname "src/"
               :components ((:file "package")
                            (:file "conditions")

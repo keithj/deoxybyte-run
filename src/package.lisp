@@ -25,6 +25,8 @@
    #:*empty-field*
 
    ;; Conditions
+   #:io-error
+
    #:cli-error
    #:cli-warning
    #:unknown-command

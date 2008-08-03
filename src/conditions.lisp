@@ -17,6 +17,12 @@
 
 (in-package :cl-io-utilities)
 
+;;; General IO error conditions
+
+(define-condition io-error (error)
+  ()
+  (:documentation "The parent type of all IO error conditions."))
+
 ;;; Command line interface conditions
 (define-condition cli-error (error)
   ()

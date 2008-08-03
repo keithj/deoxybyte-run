@@ -136,10 +136,6 @@ position and style.")))
   (:documentation "Renders SERIES using PLOTTER."))
 
 (defgeneric write-header (series stream)
-  (:documentation "Writes plotting metadata, consisting of a sequence
-of 'using' and 'with' statements for SERIES, to a Gnuplot STREAM."))
-
-(defgeneric write-header (series stream)
   (:documentation "Writes plot data for SERIES to Gnuplot STREAM."))
 
 (defgeneric draw-plot (plotter plot &key terminal output)
@@ -224,12 +220,14 @@ and one or more series."))
 
 (defmethod draw-plot ((plotter gnuplot) (plot 2d-plot)
                       &key (terminal :x11) output)
+  (declare (ignore terminal output))
   (let ((stream (input-stream-of plotter)))
     (write-string "plot" stream)
     (format-series plotter (series-of plot))))
 
 (defmethod draw-plot ((plotter gnuplot) (plot histogram)
                       &key (terminal :x11) output)
+  (declare (ignore terminal output))
   (let ((stream (input-stream-of plotter)))
     (write-line "set style data histogram" stream)
     (write-string "plot" stream)
@@ -249,5 +247,7 @@ GNUPLOT."
 (defun stop-gnuplot (plotter)
   "Stops the PLOTTER process."
   (let ((stream (input-stream-of plotter)))
-    (write-line "quit" stream))
-  t)
+    (write-line "quit" stream)
+    (force-output stream))
+  #+sbcl(sb-ext:process-wait (process-of plotter))
+  #+sbcl(sb-ext:process-close (process-of plotter)))

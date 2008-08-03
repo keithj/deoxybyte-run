@@ -23,6 +23,9 @@
 
 (in-package :cl-io-utilities-test)
 
+(defvar *png-signature* '(137 80 78 71 13 10 26 10)
+  "The first eight bytes of any PNG file.")
+
 (defun as-bytes (str)
   (make-array (length str) :element-type '(unsigned-byte 8)
               :initial-contents (loop for c across str
@@ -193,25 +196,25 @@
         (is (equalp line (stream-read-line s)))))))
 
 ;; ;; This test fails on SBCL due to a bug in read-line (missing-newline-p)
-;; (test missing-newline-p/line-buffer
-;;   (with-open-file (stream (merge-pathnames "data/test2.txt")
-;;                    :direction :input
-;;                    :element-type 'base-char
-;;                    :external-format :ascii)
-;;     (let ((s (make-line-input-stream stream))
-;;           (lines '("1234567890"
-;;                    "0987654321"
-;;                    "abcdefghij"
-;;                    "klmnopqrst")))
-;;       (dolist (line (butlast lines))
-;;         (multiple-value-bind (line2 missing-newline-p)
-;;             (stream-read-line s)
-;;           (is (equalp line line2))
-;;           (is-false missing-newline-p)))
-;;       (multiple-value-bind (line2 missing-newline-p)
-;;           (stream-read-line s)
-;;         (is (equalp (car (last lines)) line2))
-;;         (is-true missing-newline-p)))))
+(test missing-newline-p/line-buffer
+  (with-open-file (stream (merge-pathnames "data/test2.txt")
+                   :direction :input
+                   :element-type 'base-char
+                   :external-format :ascii)
+    (let ((s (make-line-input-stream stream))
+          (lines '("1234567890"
+                   "0987654321"
+                   "abcdefghij"
+                   "klmnopqrst")))
+      (dolist (line (butlast lines))
+        (multiple-value-bind (line2 missing-newline-p)
+            (stream-read-line s)
+          (is (equalp line line2))
+          (is-false missing-newline-p)))
+      (multiple-value-bind (line2 missing-newline-p)
+          (stream-read-line s)
+        (is (equalp (car (last lines)) line2))
+        (is-true missing-newline-p)))))
 
 (test missing-newline-p/binary-line-input-stream
   (with-open-file (stream (merge-pathnames "data/test2.txt")
@@ -298,9 +301,9 @@
                   (signals gpu:invalid-argument-error
                     (make-tmp-pathname :tmpdir bad-dir))))))
 
-
-(defun test-xy-plot ()
-  (let* ((plotter (gpt:run-gnuplot))
+(test gnuplot/xy-plot/png
+  (let* ((png-filespec (namestring (merge-pathnames "data/xy-plot.png")))
+         (plotter (gpt:run-gnuplot))
          (x #(0 1 2 3 4 5 6 7 8 9))
          (y #(1 2.5 3 4 5 6 6.5 4 3.2 3))
          (plot (make-instance
@@ -316,5 +319,13 @@
                                        :style '(:linespoints
                                                 :smooth
                                                 :csplines)))))
-    (gpt:draw-plot plotter plot :terminal :x11)
-    (gpt:stop-gnuplot plotter)))
+    (is-true (open-stream-p (input-stream-of plotter)))
+    (gpt:draw-plot plotter plot :terminal :png :output png-filespec)
+    (gpt:stop-gnuplot plotter)
+    (is-false (open-stream-p (input-stream-of plotter)))
+    (with-open-file (png-stream png-filespec :direction :input
+                     :element-type '(unsigned-byte 8))
+      (is (equalp *png-signature* (loop
+                                     repeat 8
+                                     collect (read-byte png-stream)))))
+    (delete-file png-filespec)))
