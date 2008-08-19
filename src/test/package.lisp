@@ -16,5 +16,6 @@
 ;;;
 
 (defpackage #:cl-io-utilities-test
-  (:use #:common-lisp #:cl-io-utilities #:fiveam #:sb-gray)
-  (:documentation "IO utilities tests."))
+  (:use #:common-lisp #:cl-io-utilities #:lift #:sb-gray)
+  (:documentation "IO utilities tests.")
+  (:export #:cl-io-utilities-tests))

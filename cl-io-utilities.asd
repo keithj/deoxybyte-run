@@ -18,8 +18,7 @@
 (in-package :cl-user)
 
 (defpackage #:cl-io-utilities-system
-  (:use :common-lisp :asdf)
-  (:export #:testsuite))
+  (:use :common-lisp :asdf))
 
 
 (in-package #:cl-io-utilities-system)
@@ -59,8 +58,8 @@
                                           :cl-io-utilities))))
   (operate 'load-op :cl-io-utilities-test)
   (let ((*default-pathname-defaults* (component-pathname c)))
-    (funcall (intern (string :run!) (string :fiveam))
-             'cl-io-utilities-system:testsuite)))
+    (funcall (intern (string :run-tests) (string :lift))
+             :config "./cl-io-utilities-test.config")))
 
 (defmethod operation-done-p ((op test-op) (c (eql (find-system
                                                    :cl-io-utilities))))
