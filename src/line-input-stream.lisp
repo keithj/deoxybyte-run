@@ -107,7 +107,7 @@ actually read."))
 (defun make-line-input-stream (stream)
   "Returns a new {defclass character-line-input-stream} or
 {defclass binary-line-input-stream} wrapping STREAM. The element type
-of STREAM must be eithera a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
+of STREAM must be either a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
   (unless (and (streamp stream)
                (input-stream-p stream)
                (open-stream-p stream))
