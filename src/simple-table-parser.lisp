@@ -69,7 +69,8 @@ those fields have acceptable values."
          (declare (optimize (speed 3)))
          (declare (type simple-string line))
          (multiple-value-bind (field-starts field-ends)
-             (vector-split-indices ,delimiter line)
+             ;; (vector-split-indices ,delimiter line)
+             (string-split-indices ,delimiter line)
            (declare (type list field-starts))
            (unless (= ,field-count (length field-starts))
              (error 'malformed-record-error :text
