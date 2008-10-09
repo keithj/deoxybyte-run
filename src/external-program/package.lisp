@@ -39,26 +39,26 @@ An example of an XY plot of one series, plotted to a PNG file and also
 to the screen.
 
 ;;; (let ((plotter (run-gnuplot))
-;;;         (plot (make-instance
-;;;                '2d-plot
-;;;                :title "Foo"
-;;;                :legend '(:tmargin :left)
-;;;                :x-axis (make-instance 'axis :label "foo x"
-;;;                                       :position :x)
-;;;                :y-axis (make-instance 'axis :label "foo y"
-;;;                                       :position :y)
-;;;                :series (make-instance 'xy-series
-;;;                                       :x-values
-;;;                                       '(-1 0 3 4 5 8)
-;;;                                       :y-values
-;;;                                       '(-10 2 4 5 17 10)
-;;;                                       :style '(:linespoints
-;;;                                                :smooth
-;;;                                                :csplines)))))
-;;;     (draw-plot plotter plot :terminal :png :output "foo.png")
-;;;     (draw-plot plotter plot :terminal :x11)
-;;;     (sleep 5)
-;;;     (stop-gnuplot plotter))")
+;;;       (plot (make-instance
+;;;              '2d-plot
+;;;              :title "Foo"
+;;;              :legend '(:tmargin :left)
+;;;              :x-axis (make-instance 'axis :label "foo x"
+;;;                                     :position :x)
+;;;              :y-axis (make-instance 'axis :label "foo y"
+;;;                                     :position :y)
+;;;              :series (make-instance 'xy-series
+;;;                                     :x-values
+;;;                                     '(-1 0 3 4 5 8)
+;;;                                     :y-values
+;;;                                     '(-10 2 4 5 17 10)
+;;;                                     :style '(:linespoints
+;;;                                              :smooth
+;;;                                              :csplines)))))
+;;;   (draw-plot plotter plot :terminal :png :output "foo.png")
+;;;   (draw-plot plotter plot :terminal :x11)
+;;;   (sleep 5)
+;;;   (stop-gnuplot plotter))")
   (:export
    ;; Classes
    #:gnuplot
