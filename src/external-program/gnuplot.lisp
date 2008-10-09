@@ -135,8 +135,14 @@ position and style.")))
 (defgeneric format-series (plotter series)
   (:documentation "Renders SERIES using PLOTTER."))
 
+(defgeneric header-of (series)
+  (:documentation "Returns a Gnuplot header string for SERIES."))
+
 (defgeneric write-header (series stream)
-  (:documentation "Writes plot data for SERIES to Gnuplot STREAM."))
+  (:documentation "Writes the Gnuplot header data for SERIES STREAM."))
+
+(defgeneric write-data (series stream)
+  (:documentation "Writes the Gnuplot data of SERIES to STREAM."))
 
 (defgeneric draw-plot (plotter plot &key terminal output)
   (:documentation "Renders a single plot, that is, title, axes, legend
@@ -147,7 +153,6 @@ and one or more series."))
 
 (defmethod length-of ((series category-series))
   (length (categories-of series)))
-
 
 (defmethod format-axis ((plotter gnuplot) (axis axis))
   (let ((stream (input-stream-of plotter)))
@@ -167,7 +172,6 @@ and one or more series."))
 
 (defmethod header-of ((series category-series))
   (format nil " '-' using 2:xtic(1)~@[ with ~{~^~(~a~) ~}~]" (style-of series)))
-
 
 (defmethod format-series ((plotter gnuplot) (series list))
   (let ((stream (input-stream-of plotter)))
