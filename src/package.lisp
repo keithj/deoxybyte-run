@@ -32,6 +32,7 @@
    #:unknown-command
    #:missing-required-option
    #:incompatible-argument
+   #:unmatched-option
    #:unknown-option
 
    #:general-parse-error

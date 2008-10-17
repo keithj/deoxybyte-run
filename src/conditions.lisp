@@ -71,6 +71,15 @@ supplied.")
   (:documentation "An error that is raised when an option is supplied
 with an argument of the wrong type."))
 
+(define-condition unmatched-option (cli-warning)
+  ((option :initarg :option
+           :reader option-of
+           :documentation "The option for which the bad argument was
+supplied."))
+  (:report (lambda (condition stream)
+             (format stream "unmatched argument --~a"
+                     (option-of condition)))))
+
 (define-condition unknown-option (cli-warning)
   ((option :initarg :option
            :reader option-of

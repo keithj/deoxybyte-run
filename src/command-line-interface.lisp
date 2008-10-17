@@ -52,7 +52,7 @@ Returns:
   (multiple-value-bind (remaining-args matched-args unmatched-args)
       (getopt:getopt args (getopt-options options))
     (when unmatched-args
-      (warn-unmatched-args unmatched-args))
+      (warn-unmatched-args unmatched-args options))
     (let ((parsed-args nil))
       (dolist (opt options)
         (let ((arg-value (assocdr (cli-opt-name opt)
@@ -61,11 +61,15 @@ Returns:
                       (null arg-value))
                  (error 'missing-required-option
                         :option (cli-opt-name opt)))
-                ((cli-arg-parser opt) ; parseable opt args
-                 (setf parsed-args
-                       (acons (cli-opt-key opt)
-                              (parse-value-safely opt arg-value)
-                              parsed-args)))
+                ((and (cli-arg-required-p opt) ; opt parseable args
+                      (cli-arg-parser opt))
+                   (let ((parsed-arg (if (null arg-value)
+                                         arg-value
+                                       (parse-value-safely opt arg-value))))
+                     (setf parsed-args
+                           (acons (cli-opt-key opt)
+                                  parsed-arg
+                                  parsed-args))))
                 ((and (not (cli-opt-required-p opt)) ; boolean flags
                       (not (cli-arg-required-p opt))
                       (assoc (cli-opt-name opt)
@@ -164,6 +168,9 @@ Returns:
     (list key name required-option required-argument argument-type
           argument-parser documentation)))
 
+(defun cli-opt-p (name options)
+  (find name options :key #'cli-opt-name :test #'string=))
+
 (defun cli-opt-key (option)
   "Returns the key symbol for OPTION."
   (first option))
@@ -198,7 +205,16 @@ parsing an argument string to the correct type."
 (defun cli-arg-value (option-key parsed-args)
   "Returns the value from PARSED-ARGS for the option named by the
 symbol OPTION-KEY."
+  (unless (cli-key-present-p option-key parsed-args)
+    (error 'invalid-argument-error
+           :params '(option-key parsed-args)
+           :args (list option-key parsed-args)
+           :text "there is no value for this key in the parsed arguments"))
   (assocdr option-key parsed-args))
+
+(defun cli-key-present-p (option-key parsed-args)
+  "Returns T if a value for OPTION-KEY is present in PARSED-ARGS."
+  (member option-key parsed-args :key #'first))
 
 (defun print-option-help (option &optional (stream *error-output*))
   "Prints the help string for OPTION to STREAM (which defaults to
@@ -221,11 +237,13 @@ symbol OPTION-KEY."
                 (list (cli-opt-name opt)
                       (getopt-keyword opt))) options)))
 
-(defun warn-unmatched-args (unmatched-args)
+(defun warn-unmatched-args (unmatched-args options)
   "Prints a warning message to *ERROR-OUTPUT* describing
 UNMATCHED-ARGS."
   (dolist (arg unmatched-args)
-    (warn 'unknown-option :option arg)))
+    (if (cli-opt-p arg options)
+        (warn 'unmatched-option :option arg)
+      (warn 'unknown-option :option arg))))
 
 (defun parse-value-safely (option value)
   "Returns a parsed VALUE of the correct Lisp type for OPTION or
