@@ -89,4 +89,6 @@
    #:external-merge-sort
 
    ;; Macros
-   #:define-line-parser))
+   #:define-line-parser
+   #:with-li-stream
+   #:with-ascii-li-stream))

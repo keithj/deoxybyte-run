@@ -185,7 +185,6 @@ of STREAM must be either a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
 (defmethod push-line ((stream character-line-input-stream) (line string))
   (push line (line-stack-of stream)))
 
-
 ;;; binary-line-input-stream methods
 (defmethod stream-clear-input ((stream binary-line-input-stream))
   (setf (offset-of stream) 0
@@ -302,3 +301,24 @@ contents into a new fixed length array, which is returned."
                             line offset)
             (incf offset chunk-length)))
     line))
+
+(defmacro with-li-stream ((stream filespec &rest options)
+                          &body body)
+  "Uses WITH-OPEN-FILE to create a file stream to a file named by
+FILESPEC. The file stream is wrapped in a {defclass line-input-stream}
+and returned."
+  (with-gensyms (fs)
+    `(with-open-file (,fs ,filespec ,@options)
+      (let ((,stream (make-line-input-stream ,fs)))
+        ,@body))))
+
+(defmacro with-ascii-li-stream ((stream filespec)
+                                &body body)
+   "Uses WITH-LI-STREAM to create a file stream with element-type
+BASE-CHAR and external format ASCII to a file named by FILESPEC. The
+file stream is wrapped in a {defclass line-input-stream} and
+returned."
+  `(with-li-stream (,stream ,filespec :direction :input
+                    :element-type 'base-char
+                    :external-format :ascii)
+    ,@body))
