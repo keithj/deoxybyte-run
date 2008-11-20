@@ -79,8 +79,8 @@ those fields have acceptable values."
                             (length field-starts) ,field-count line)))
            (let ((parsed-fields
                   (loop
-                     for name in (list ,@(mapcar #'(lambda (n)
-                                                     `(quote ,n))
+                     for name in (list ,@(mapcar (lambda (n)
+                                                   `(quote ,n))
                                                  field-names))
                      for arg-list in (list ,@field-args)
                      for start in field-starts
@@ -92,8 +92,8 @@ those fields have acceptable values."
                                           start end arg-list)))))
              (let* ((record-constraints
                      (loop
-                        for name in (list ,@(mapcar #'(lambda (n)
-                                                        `(quote ,n))
+                        for name in (list ,@(mapcar (lambda (n)
+                                                      `(quote ,n))
                                                     constraint-names))
                         for form in (list ,@constraint-args)
                         collect (apply #'validate-record
@@ -182,8 +182,8 @@ and VALIDATOR."
   "Returns a pair of constraint NAME and either T or NIL, indicating
 the result of applying VALIDATOR to values from the alist of parsed
 FIELDS named by FIELD-NAMES."
-  (let ((field-values (mapcar #'(lambda (key)
-                                  (assocdr key fields)) field-names)))
+  (let ((field-values (mapcar (lambda (key)
+                                (assocdr key fields)) field-names)))
     (cons name (handler-case
                    (apply validator field-values)
                  (error (condition)
@@ -219,6 +219,6 @@ quoting the field-names in FORM and re-ordering the elements."
   (destructuring-bind (constraint-name field-names validator)
       form
     (declare (ignore constraint-name))
-    `(list ,validator ,@(mapcar #'(lambda (n)
-                                    `(quote ,n))
+    `(list ,validator ,@(mapcar (lambda (n)
+                                  `(quote ,n))
                                 field-names))))

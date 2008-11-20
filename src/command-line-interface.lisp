@@ -20,6 +20,69 @@
 (defparameter *list-separator-char* #\,
   "The separator character used in multi-value arguments.")
 
+(defmacro with-argv (argv &body body)
+  `(let ((,argv (get-system-argv)))
+    ,@body))
+
+(defmacro with-backtrace ((&key quit error-file) &body body)
+  `(handler-bind
+    ((error (lambda (condition)
+              ,(if error-file
+                   `(with-open-file (stream ,error-file
+                                     :direction :output
+                                      :if-exists :append)
+                     (print-backtrace condition stream))
+                   '(print-backtrace condition *error-output*))
+              ,(when quit
+                     '(quit-lisp)))))
+    ,@body))
+
+(defmacro with-cli ((argv &key quit error-file) &body body)
+  `(with-backtrace (:quit ,quit ,@(when error-file
+                                        `(:error-file ,error-file)))
+    (with-argv ,argv
+          ,@body)))
+
+#+:sbcl
+(defun get-system-argv ()
+  (rest sb-ext:*posix-argv*))
+
+#+:lispworks
+(defun get-system-argv ()
+  (rest *line-arguments-list*))
+
+#-(or :sbcl :lispworks)
+(defun get-system-argv ()
+  (error "Not implemented on ~a" (lisp-implementation-type)))
+
+#+:sbcl
+(defun print-backtrace (condition stream)
+  (sb-debug:backtrace 20 stream)
+  (format stream "~a~%" condition))
+
+#+:lispworks
+(defun print-backtrace (condition stream)
+  (let ((*debug-io* stream))
+    (dbg:with-debugger-stack ()
+      (dbg:bug-backtrace nil)))
+  (format stream "~a~%" condition))
+
+#-(or :sbcl :lispworks)
+(defun print-backtrace (condition)
+  (error "Not implemented on ~a" (lisp-implementation-type)))
+
+#+:sbcl
+(defun quit-lisp ()
+  (sb-ext:quit))
+
+#+:lispworks
+(defun quit-lisp ()
+  (lw:quit))
+
+#-(or :sbcl :lispworks)
+(defun quit-lisp ()
+  (error "Not implemented on ~a" (lisp-implementation-type)))
+
 (defun parse-command-line (args options)
   "Parses a system command line to create a mapping of option keywords
 to Lisp objects. Where multiple values are to be accepted for an
@@ -233,9 +296,9 @@ symbol OPTION-KEY."
                    :none)
                   (t
                    :optional))))
-    (mapcar #'(lambda (opt)
-                (list (cli-opt-name opt)
-                      (getopt-keyword opt))) options)))
+    (mapcar (lambda (opt)
+              (list (cli-opt-name opt)
+                    (getopt-keyword opt))) options)))
 
 (defun warn-unmatched-args (unmatched-args options)
   "Prints a warning message to *ERROR-OUTPUT* describing

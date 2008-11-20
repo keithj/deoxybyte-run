@@ -81,7 +81,8 @@
    #:cli-arg-type
    #:cli-arg-parser
    #:cli-arg-value
-
+   #:quit-lisp
+   
    #:make-tmp-pathname
    #:make-pathname-gen
    #:make-pathname-ext
@@ -91,4 +92,7 @@
    ;; Macros
    #:define-line-parser
    #:with-li-stream
-   #:with-ascii-li-stream))
+   #:with-ascii-li-stream
+   #:with-cli
+   #:with-argv
+   #:with-backtrace))
