@@ -23,6 +23,11 @@
   ()
   (:documentation "The parent type of all IO error conditions."))
 
+(define-condition io-warning (warning)
+  ()
+  (:documentation "The parent type of all IO warning conditions."))
+
+
 ;;; Command line interface conditions
 (define-condition cli-error (error)
   ()
@@ -91,7 +96,7 @@ supplied."))
 
 
 ;;; Parse conditions
-(define-condition general-parse-error (error)
+(define-condition general-parse-error (io-error)
   ((text :initform nil
          :initarg :text
          :reader text-of

@@ -26,7 +26,7 @@
 
    ;; Conditions
    #:io-error
-
+   #:io-warning
    #:cli-error
    #:cli-warning
    #:unknown-command

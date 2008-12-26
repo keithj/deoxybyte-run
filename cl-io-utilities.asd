@@ -17,8 +17,11 @@
 
 (in-package :cl-user)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (asdf:operate 'asdf:load-op :cl-system-utilities))
+
 (defpackage #:cl-io-utilities-system
-  (:use :common-lisp :asdf))
+  (:use :common-lisp :asdf :cl-system-utilities))
 
 
 (in-package #:cl-io-utilities-system)
@@ -28,6 +31,7 @@
     :author "Keith James"
     :version "0.2.0"
     :licence "GPL v3"
+    :in-order-to ((test-op (load-op :cl-io-utilities :cl-io-utilities-test)))
     :depends-on (:cl-gp-utilities :split-sequence :trivial-gray-streams
                                   :cl-fad :getopt)
     :components
@@ -49,28 +53,9 @@
               :components ((:file "package")
                            (:file "external-program")
                            (:file "gnuplot"))
-              :depends-on (:core))))
-
-
-(in-package #:asdf)
-
-(defmethod perform ((op test-op) (c (eql (find-system
-                                          :cl-io-utilities))))
-  (operate 'load-op :cl-io-utilities-test)
-  (let ((*default-pathname-defaults* (component-pathname c)))
-    (funcall (intern (string :run-tests) (string :lift))
-             :config "./cl-io-utilities-test.config")))
-
-(defmethod operation-done-p ((op test-op) (c (eql (find-system
-                                                   :cl-io-utilities))))
-  nil)
-
-(defmethod perform ((op cldoc-op) (c (eql (find-system
-                                           :cl-io-utilities))))
-  (unless (find-package :cl-io-utilities)
-    (operate 'load-op :cl-io-utilities))
-
-  (let ((*default-pathname-defaults* (component-pathname c))
-        (fn-sym (intern (string :extract-documentation) (string :cldoc)))
-        (op-sym (intern (string :html) (string :cldoc))))
-    (funcall fn-sym op-sym "./doc/html" c)))
+              :depends-on (:core))
+     (:lift-test-config :cl-io-utilities-test
+                        :target-system :cl-io-utilities)
+     (:cldoc-config :cl-io-utilities-doc
+                    :target-system :cl-io-utilities
+                    :pathname "doc/html")))

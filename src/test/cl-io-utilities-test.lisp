@@ -51,7 +51,7 @@
 ;; sb-gray:stream-listen stream
 ;; sb-gray:stream-unread-char stream character
 
-(addtest (cl-io-utilities-tests) gray-common/char-lis
+(addtest (cl-io-utilities-tests) gray-common/1
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type 'base-char
@@ -65,7 +65,7 @@
       (ensure-error
        (stream-read-line s)))))
 
-(addtest (cl-io-utilities-tests) gray-common/bin-lis
+(addtest (cl-io-utilities-tests) gray-common/2
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
@@ -78,7 +78,7 @@
       (ensure-error
        (stream-read-line s)))))
 
-(addtest (cl-io-utilities-tests) gray-input/char-lis
+(addtest (cl-io-utilities-tests) gray-input/1
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type 'base-char
@@ -93,7 +93,7 @@
       (ensure (= 10 (stream-read-sequence s b)))
       (ensure (string= "abcdefghij" b)))))
 
-(addtest (cl-io-utilities-tests) gray-input/bin-lis
+(addtest (cl-io-utilities-tests) gray-input/2
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
@@ -103,7 +103,7 @@
       (ensure (= 10 (stream-read-sequence s b)))
       (ensure (equalp (as-bytes "abcdefghij") b)))))
 
-(addtest (cl-io-utilities-tests) gray-binary/bin-lis
+(addtest (cl-io-utilities-tests) gray-binary/1
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
@@ -112,7 +112,7 @@
       (loop for byte across line
            do (ensure (= byte (stream-read-byte s)))))))
 
-(addtest (cl-io-utilities-tests) gray-char/char-lis
+(addtest (cl-io-utilities-tests) gray-char/1
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type 'base-char
@@ -124,7 +124,7 @@
       (loop for char across line
          do (ensure (char= char (stream-read-char s)))))))
 
-(addtest (cl-io-utilities-tests) stream-read-line/char-lis
+(addtest (cl-io-utilities-tests) stream-read-line/1
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type 'base-char
@@ -140,7 +140,7 @@
         (ensure (eql :eof line2))
         (ensure missing-newline-p)))))
 
-(addtest (cl-io-utilities-tests) stream-read-line/bin-lis
+(addtest (cl-io-utilities-tests) stream-read-line/2
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
@@ -155,7 +155,7 @@
         (ensure-same :eof bytes)
         (ensure missing-newline-p)))))
 
-(addtest (cl-io-utilities-tests) push-line/char-lis
+(addtest (cl-io-utilities-tests) push-line/1
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type 'base-char
@@ -169,7 +169,7 @@
         (push-line s line2)
         (ensure (equalp line (stream-read-line s)))))))
 
-(addtest (cl-io-utilities-tests) push-line/bin-lis
+(addtest (cl-io-utilities-tests) push-line/2
   (with-open-file (stream (merge-pathnames "data/test1.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
@@ -182,7 +182,7 @@
         (push-line s bytes)
         (ensure (equalp line (stream-read-line s)))))))
 
-(addtest (cl-io-utilities-tests) missing-newline-p/line-buffer
+(addtest (cl-io-utilities-tests) missing-newline-p/1
   (with-open-file (stream (merge-pathnames "data/test2.txt")
                    :direction :input
                    :element-type 'base-char
@@ -202,7 +202,7 @@
         (ensure (equalp (car (last lines)) line2))
         (ensure missing-newline-p)))))
 
-(addtest (cl-io-utilities-tests) missing-newline-p/bin-lis
+(addtest (cl-io-utilities-tests) missing-newline-p/2
   (with-open-file (stream (merge-pathnames "data/test2.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
@@ -221,7 +221,7 @@
         (ensure (equalp (car (last lines)) bytes))
         (ensure missing-newline-p)))))
 
-(addtest (cl-io-utilities-tests) find-line/bin-lis
+(addtest (cl-io-utilities-tests) find-line/1
   (with-open-file (stream (merge-pathnames "data/test3.txt")
                    :direction :input
                    :element-type '(unsigned-byte 8))
@@ -265,7 +265,7 @@
         (ensure (not found))
         (ensure (= 5 line-count))))))
 
-(addtest (cl-io-utilities-tests) make-tmp-pathname
+(addtest (cl-io-utilities-tests) make-tmp-pathname/1
   ;; Test defaults
   (ensure (pathnamep (make-tmp-pathname)))
   (ensure (string= "/tmp/" (directory-namestring (make-tmp-pathname))))
@@ -287,7 +287,7 @@
                  (ensure-condition gpu:invalid-argument-error
                                    (make-tmp-pathname :tmpdir bad-dir))))))
 
-(addtest (cl-io-utilities-tests) gnuplot/xy-plot/png
+(addtest (cl-io-utilities-tests) gnuplot/1
   (let* ((png-filespec (namestring (merge-pathnames "data/xy-plot.png")))
          (plotter (gpt:run-gnuplot))
          (x #(0 1 2 3 4 5 6 7 8 9))
