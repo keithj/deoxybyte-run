@@ -15,8 +15,7 @@ fasl:
 	--eval "(progn (asdf:oos 'asdf:compile-op :cl-io-utilities) (quit))"
 
 doc:
-	sbcl --noinform --noprint \
-	--eval "(progn (asdf:oos 'asdf:cldoc-op :cl-io-utilities) (quit))"
+	sbcl --noinform --noprint --load make-doc.lisp
 
 test:
 	sbcl --noinform --noprint \
