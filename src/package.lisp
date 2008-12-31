@@ -55,6 +55,8 @@
    #:find-line
    #:text-of
    #:test-of
+   #:record-of
+   #:field-of
 
    #:program-of
    #:args-of

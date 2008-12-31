@@ -107,7 +107,10 @@ supplied."))
   (:documentation "The parent type of all parse error conditions."))
 
 (define-condition malformed-record-error (general-parse-error)
-  ()
+  ((record :initform nil
+           :initarg :record
+           :reader record-of
+           :documentation "The malformed record."))
   (:report (lambda (condition stream)
              (format stream "Malformed record error~@[: ~a~]"
                      (text-of condition))))
@@ -123,7 +126,10 @@ for any reason."))
 validation of one or more of its parts."))
 
 (define-condition malformed-field-error (malformed-record-error)
-  ()
+  ((field :initform nil
+          :initarg :field
+          :reader field-of
+          :documentation "The malformed field."))
   (:report (lambda (condition stream)
              (format stream "Malformed field error~@[: ~a~]"
                      (text-of condition))))
