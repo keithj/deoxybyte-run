@@ -180,7 +180,7 @@ of STREAM must be either a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
 
 (defmethod more-lines-p ((stream character-line-input-stream))
   (or (line-stack-of stream)
-      (peek-char nil (stream-of stream) nil :eof)))
+      (not (eql :eof (peek-char nil (stream-of stream) nil :eof)))))
 
 (defmethod push-line ((stream character-line-input-stream) (line string))
   (push line (line-stack-of stream)))
