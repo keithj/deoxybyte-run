@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2007-2008, Keith James. All rights reserved.
+;;; Copyright (C) 2007-2009 Keith James. All rights reserved.
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ specify the type of the new pathnames."
 
 (defun make-pathname-ext (pathname &key type separator generator)
   "Returns a function of arity 1 that returns modified copies of a
-pathname argument. The pathname is modified by extending is
+pathname argument. The pathname is modified by extending its
 namestring. The new namestring is composed of the original namestring
 SEPARATOR (defaults to NIL) and a value taken from calling the
 function GENERATOR (defaults to a numeric generator starting from 0,
