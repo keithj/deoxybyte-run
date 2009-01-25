@@ -32,8 +32,8 @@
     :version "0.2.0"
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :cl-io-utilities :cl-io-utilities-test)))
-    :depends-on (:cl-gp-utilities :split-sequence :trivial-gray-streams
-                                  :cl-fad :getopt)
+    :depends-on (:cl-gp-utilities :split-sequence :cl-fad :getopt
+                 :trivial-gray-streams)
     :components
     ((:module :core
               :serial t

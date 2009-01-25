@@ -61,9 +61,14 @@
    #:program-of
    #:args-of
    #:process-of
-   #:input-stream-of
-   #:output-stream-of
-   #:error-stream-of
+   #:input-of
+   #:output-of
+   #:error-of
+   #:wait-for
+   #:status-of
+   #:exit-code-of
+   #:close-process
+   #:kill-process
 
    ;; Functions
    #:make-line-input-stream

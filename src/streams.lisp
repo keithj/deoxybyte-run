@@ -18,7 +18,7 @@
 (in-package :cl-io-utilities)
 
 ;;; Gray-stream classes
-(defclass wrapped-stream (fundamental-stream)
+(defclass wrapped-stream ()
   ((stream :initarg :stream
            :reader stream-of
            :documentation "The underlying stream from which data are

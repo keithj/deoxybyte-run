@@ -101,6 +101,9 @@ position and style.")))
              :accessor y-values-of))
   (:documentation "An xy series of two sequences of equal length."))
 
+(defmethod initialize-instance :after ((plotter gnuplot) &key &allow-other-keys)
+  nil)
+
 (defmethod initialize-instance :after ((series xy-series) &key)
   (with-slots (x-values y-values) series
     (unless (= (length x-values) (length y-values))
@@ -155,7 +158,7 @@ and one or more series."))
   (length (categories-of series)))
 
 (defmethod format-axis ((plotter gnuplot) (axis axis))
-  (let ((stream (input-stream-of plotter)))
+  (let ((stream (input-of plotter)))
     (with-slots (position label tics minor-tics) axis
       (when label
         (format stream "set ~(~a~)label ~s~%" position label))
@@ -174,7 +177,7 @@ and one or more series."))
   (format nil " '-' using 2:xtic(1)~@[ with ~{~^~(~a~) ~}~]" (style-of series)))
 
 (defmethod format-series ((plotter gnuplot) (series list))
-  (let ((stream (input-stream-of plotter)))
+  (let ((stream (input-of plotter)))
     (dolist (s (butlast series))
       (write-string (header-of s) stream)
       (write-string "," stream))
@@ -184,7 +187,7 @@ and one or more series."))
       (write-data s stream))))
 
 (defmethod format-series ((plotter gnuplot) (series xy-series))
-  (let ((stream (input-stream-of plotter)))
+  (let ((stream (input-of plotter)))
     (write-string (header-of series) stream)
     (terpri stream)
     (write-data series stream)))
@@ -207,7 +210,7 @@ and one or more series."))
 
 (defmethod draw-plot :before ((plotter gnuplot) (plot 2d-plot)
                               &key (terminal :x11) output)
-  (let ((stream (input-stream-of plotter)))
+  (let ((stream (input-of plotter)))
     (with-slots (title x-axis y-axis series) plot
       (princ "set terminal " stream)
       (if (listp terminal)
@@ -225,14 +228,14 @@ and one or more series."))
 (defmethod draw-plot ((plotter gnuplot) (plot 2d-plot)
                       &key (terminal :x11) output)
   (declare (ignore terminal output))
-  (let ((stream (input-stream-of plotter)))
+  (let ((stream (input-of plotter)))
     (write-string "plot" stream)
     (format-series plotter (series-of plot))))
 
 (defmethod draw-plot ((plotter gnuplot) (plot histogram)
                       &key (terminal :x11) output)
   (declare (ignore terminal output))
-  (let ((stream (input-stream-of plotter)))
+  (let ((stream (input-of plotter)))
     (write-line "set style data histogram" stream)
     (write-string "plot" stream)
     (format-series plotter (series-of plot))))
@@ -240,18 +243,19 @@ and one or more series."))
 (defmethod draw-plot :after ((plotter gnuplot) (plot plot)
                              &key terminal output)
   (declare (ignore terminal output))
-  (force-output (input-stream-of plotter)))
+  (force-output (input-of plotter)))
 
-(defun run-gnuplot (&rest args)
+(defun run-gnuplot ()
   "Starts a new Gnuplot process and returns a CLOS object of class
 GNUPLOT."
-  (apply #'make-instance 'gnuplot
-         :program "gnuplot" :args '("-display" ":0.0") args))
+  (make-instance 'gnuplot
+                 :program "gnuplot" :args '("-display" ":0.0")
+                 :input :stream :output :stream :search t :wait nil))
 
 (defun stop-gnuplot (plotter)
   "Stops the PLOTTER process."
-  (let ((stream (input-stream-of plotter)))
+  (let ((stream (input-of plotter)))
     (write-line "quit" stream)
     (force-output stream))
-  #+sbcl(sb-ext:process-wait (process-of plotter))
-  #+sbcl(sb-ext:process-close (process-of plotter)))
+  (wait-for plotter)
+  (close-process plotter))

@@ -32,7 +32,7 @@ buffer."
   `(integer 0 ,+byte-buffer-size+))
 
 
-(defclass line-input-stream ()
+(defclass line-input-stream (wrapped-stream trivial-gray-stream-mixin)
   ((line-stack :initform nil
                :accessor line-stack-of
                :documentation "A list of lines that have been pushed
@@ -40,15 +40,13 @@ back into the stream to be read again."))
   (:documentation "A line-based stream that allows lines to be pushed
 back into a stack to be re-read."))
 
-(defclass character-line-input-stream (wrapped-stream
-                                       line-input-stream
+(defclass character-line-input-stream (line-input-stream
                                        fundamental-character-input-stream)
   ()
   (:documentation "A {defclass line-input-stream} whose lines are
 strings."))
 
-(defclass binary-line-input-stream (wrapped-stream
-                                    line-input-stream
+(defclass binary-line-input-stream (line-input-stream
                                     fundamental-binary-input-stream)
   ((buffer :initarg :buffer
            :initform nil
@@ -163,13 +161,31 @@ of STREAM must be either a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
   (setf (line-stack-of stream) nil))
 
 (defmethod stream-read-char ((stream character-line-input-stream))
-  (stream-clear-input stream)
-  (read-char (stream-of stream)))
+  (if (null (line-stack-of stream))
+      (read-char (stream-of stream) nil :eof)
+    (read-elt-from-line-stack stream)))
 
 (defmethod stream-unread-char ((stream character-line-input-stream)
                                (char character))
-  (stream-clear-input stream)
-  (unread-char char (stream-of stream)))
+  (cond ((null (line-stack-of stream))
+         (unread-char char (stream-of stream)))
+        ((char= #\Newline char)
+         (push-line stream (make-array 0 :element-type (cl:type-of char))))
+        (t
+         (let* ((line (pop (line-stack-of stream)))
+                (copy (make-array (1+ (length line))
+                                  :element-type (array-element-type line))))
+           (setf (aref copy 0) char)
+           (copy-array line 0 (1- (length line))
+                       copy 1)
+           (push-line stream copy))))
+  nil)
+
+(defmethod stream-read-sequence ((stream character-line-input-stream)
+                                 sequence start end &key)
+  (stream-read-sequence-with-line-stack stream sequence start end
+                                        #'(lambda (stream)
+                                            (read-char stream nil))))
 
 (defmethod stream-read-line ((stream character-line-input-stream))
   (if (null (line-stack-of stream))
@@ -192,12 +208,21 @@ of STREAM must be either a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
         (line-stack-of stream) nil))
 
 (defmethod stream-read-byte ((stream binary-line-input-stream))
-  (stream-clear-input stream)
-  (read-byte (stream-of stream)))
+  (cond ((and (null (line-stack-of stream)) (buffer-empty-p stream))
+         (read-byte (stream-of stream)))
+        ((null (line-stack-of stream))
+         (prog1
+             (aref (buffer-of stream) (offset-of stream))
+           (incf (offset-of stream))))
+        (t
+         (read-elt-from-line-stack stream))))
+
+(defmethod stream-read-sequence ((stream binary-line-input-stream)
+                                 sequence start end &key)
+  (stream-read-sequence-with-line-stack stream sequence start end
+                                        #'stream-read-byte))
 
 (defmethod stream-read-line ((stream binary-line-input-stream))
-  (unless (open-stream-p (stream-of stream))
-    (error "Stream is closed."))
   (if (null (line-stack-of stream))
       (multiple-value-bind (chunks has-newline-p)
           (read-chunks stream)
@@ -255,8 +280,8 @@ of STREAM must be either a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
            ;; if necessary.
              (let ((chunk (make-array (- nl-position offset)
                                       :element-type '(unsigned-byte 8))))
-               (gpu:copy-array buffer offset (1- nl-position)
-                               chunk 0)
+               (copy-array buffer offset (1- nl-position)
+                           chunk 0)
                (setf (offset-of stream) (1+ nl-position))
                (values (list chunk) nil)))
             ((and nl-position
@@ -280,12 +305,53 @@ of STREAM must be either a subclass of  CHARACTER or (UNSIGNED-BYTE 8)."
                                       :element-type '(unsigned-byte 8)))
                    (chunks nil)
                    (missing-nl-p t))
-               (gpu:copy-array buffer offset (1- num-bytes)
-                               chunk 0)
+               (copy-array buffer offset (1- num-bytes)
+                           chunk 0)
                (fill-buffer stream)
                (multiple-value-setq (chunks missing-nl-p)
                  (read-chunks stream))
                (values (cons chunk chunks) missing-nl-p)))))))
+
+(defun read-elt-from-line-stack (stream)
+  (let ((line (pop (line-stack-of stream))))
+    (cond ((= 1 (length line))
+           (aref line 0))
+          (t
+           (let ((copy (make-array (1- (length line))
+                                   :element-type (array-element-type line))))
+             (copy-array line 1 (1- (length line))
+                         copy 0)
+             (push-line stream copy)
+             (aref line 0))))))
+
+(defun stream-read-sequence-with-line-stack (stream sequence start end read-fn)
+  (flet ((fill-from-stream (stream start end)
+           (loop
+              for i from start below end
+              for elt = (funcall read-fn stream)
+              while elt
+              do (setf (elt sequence i) elt)
+              finally (return i))))
+    (cond ((null (line-stack-of stream))
+           (fill-from-stream stream start end))
+          (t
+           (let ((seq-index 0)
+                 (line-stack (line-stack-of stream))
+                 (line-part nil))
+             (loop
+                while (and line-stack (< seq-index end))
+                do (loop
+                      with line = (pop line-stack)
+                      for i from seq-index below end
+                      for j from 0 below (length line)
+                      do (setf (elt sequence i) (aref line j))
+                      finally (progn
+                                (incf seq-index j)
+                                (when (< j (length line))
+                                  (setf line-part (subseq line j)))))
+                finally (when line-part
+                          (push line-part line-stack)))
+             (fill-from-stream stream seq-index end))))))
 
 (defun concatenate-chunks (chunks)
   "Concatenates the list of byte arrays CHUNKS by copying their
@@ -297,8 +363,8 @@ contents into a new fixed length array, which is returned."
        for chunk-length = (length chunk)
        with offset = 0
        do (unless (zerop chunk-length)
-            (gpu:copy-array chunk 0 (1- chunk-length)
-                            line offset)
+            (copy-array chunk 0 (1- chunk-length)
+                        line offset)
             (incf offset chunk-length)))
     line))
 

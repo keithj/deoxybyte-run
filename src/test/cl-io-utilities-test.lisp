@@ -58,7 +58,7 @@
                    :external-format :ascii)
     (let ((s (make-line-input-stream stream)))
       (ensure (subtypep (stream-element-type s) 'character))
-      (ensure-null (stream-file-position s))
+      (ensure (zerop (stream-file-position s)))
       (ensure (open-stream-p s))
       (ensure (close s))
       (ensure (not (open-stream-p s)))
@@ -71,7 +71,7 @@
                    :element-type '(unsigned-byte 8))
     (let ((s (make-line-input-stream stream)))
       (ensure (equal (stream-element-type s) '(unsigned-byte 8)))
-      (ensure-null (stream-file-position s))
+      (ensure (zerop (stream-file-position s)))
       (ensure (open-stream-p s))
       (ensure (close s))
       (ensure (not (open-stream-p s)))
@@ -90,7 +90,7 @@
       (ensure (iou::line-stack-of s))
       (ensure-null (stream-clear-input s))
       (ensure (not (iou::line-stack-of s)))
-      (ensure (= 10 (stream-read-sequence s b)))
+      (ensure (= 10 (stream-read-sequence s b 0 (length b))))
       (ensure (string= "abcdefghij" b)))))
 
 (addtest (cl-io-utilities-tests) gray-input/2
@@ -100,7 +100,7 @@
     (let ((s (make-line-input-stream stream))
           (b (make-array 10 :element-type '(unsigned-byte 8))))
       (ensure-null (stream-clear-input s))
-      (ensure (= 10 (stream-read-sequence s b)))
+      (ensure (= 10 (stream-read-sequence s b 0 (length b))))
       (ensure (equalp (as-bytes "abcdefghij") b)))))
 
 (addtest (cl-io-utilities-tests) gray-binary/1
@@ -305,10 +305,10 @@
                                        :style '(:linespoints
                                                 :smooth
                                                 :csplines)))))
-    (ensure (open-stream-p (input-stream-of plotter)))
+    (ensure (open-stream-p (input-of plotter)))
     (gpt:draw-plot plotter plot :terminal :png :output png-filespec)
     (gpt:stop-gnuplot plotter)
-    (ensure (not (open-stream-p (input-stream-of plotter))))
+    (ensure (not (open-stream-p (input-of plotter))))
     (with-open-file (png-stream png-filespec :direction :input
                      :element-type '(unsigned-byte 8))
       (ensure (equalp *png-signature* (loop
