@@ -27,10 +27,12 @@
 (defmacro with-backtrace ((&key quit error-file) &body body)
   `(handler-bind
     ((error (lambda (condition)
+              (format *error-output* "~a~%" condition)
               ,(if error-file
                    `(with-open-file (stream ,error-file
                                      :direction :output
-                                      :if-exists :append)
+                                     :if-does-not-exist :create
+                                     :if-exists :append)
                      (print-backtrace condition stream))
                    '(print-backtrace condition *error-output*))
               ,(when quit
@@ -57,15 +59,13 @@
 
 #+:sbcl
 (defun print-backtrace (condition stream)
-  (sb-debug:backtrace 20 stream)
-  (format stream "~a~%" condition))
+  (sb-debug:backtrace 20 stream))
 
 #+:lispworks
 (defun print-backtrace (condition stream)
   (let ((*debug-io* stream))
     (dbg:with-debugger-stack ()
-      (dbg:bug-backtrace nil)))
-  (format stream "~a~%" condition))
+      (dbg:bug-backtrace nil))))
 
 #-(or :sbcl :lispworks)
 (defun print-backtrace (condition)

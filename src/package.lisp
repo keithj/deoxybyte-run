@@ -48,7 +48,8 @@
    #:stream-filter-mixin
 
    #:external-program
-
+   #:rsh
+   
    ;; Generics
    #:push-line
    #:more-lines-p
@@ -70,6 +71,8 @@
    #:close-process
    #:kill-process
 
+   #:host-of
+   
    ;; Functions
    #:make-line-input-stream
    #:parse-float
@@ -96,6 +99,8 @@
 
    #:external-merge-sort
 
+   #:rsh-exec
+   
    ;; Macros
    #:define-line-parser
    #:with-li-stream

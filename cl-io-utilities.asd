@@ -52,7 +52,9 @@
               :pathname "src/external-program/"
               :components ((:file "package")
                            (:file "external-program")
-                           (:file "gnuplot"))
+                           (:file "conditions")
+                           (:file "gnuplot")
+                           (:file "rsh"))
               :depends-on (:core))
      (:lift-test-config :cl-io-utilities-test
                         :target-system :cl-io-utilities)
