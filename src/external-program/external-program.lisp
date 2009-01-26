@@ -35,105 +35,117 @@ streams, such that they are always available via accessors and to
 allow creation of subclasses that handle these streams in defined
 ways."))
 
-(defstruct process
-  (id 0)
-  (input nil)
-  (output nil)
-  (error nil)
-  (exit-code nil))
+(defgeneric input-of (program)
+  (:documentation ""))
 
-#+sbcl
-(defmethod initialize-instance :after ((program external-program)
+(defgeneric output-of (program)
+  (:documentation ""))
+
+(defgeneric error-of (program)
+  (:documentation ""))
+
+(defgeneric wait-for (program &optional check-for-stopped)
+  (:documentation ""))
+
+(defgeneric status-of (program)
+  (:documentation ""))
+
+(defgeneric exit-code-of (program)
+  (:documentation ""))
+
+(defgeneric close-process (program)
+  (:documentation ""))
+
+(defgeneric kill-process (program signal &optional whom)
+  (:documentation ""))
+
+(defun run-program (program args &rest initargs)
+  (apply #'make-instance 'external-program :program program :args args
+         :allow-other-keys t initargs))
+
+#+:sbcl
+(progn
+  (defmethod initialize-instance :after ((program external-program)
                                        &rest process-args &key)
   (let ((proc-args (remove-args '(:echo :program :args) process-args)))
     (setf (slot-value program 'process)
           (apply #'sb-ext:run-program
                  (program-of program) (args-of program) proc-args))))
 
-#+lispworks
-(defmethod initialize-instance :after ((program external-program)
-                                       &rest process-args &key)
-  (let ((proc-args (remove-args '(:echo :search :program :args) process-args)))
-    (multiple-value-bind (stream error-stream pid)
-        (apply #'system:run-shell-command
-               (format nil "sh -c '~a ~{~a~^ ~}'"
-                       (program-of program) (args-of program)) proc-args)
-      (setf (slot-value program 'process)
-            (make-process :id pid :input stream :output stream
-                          :error error-stream)))))
+  (defmethod input-of ((program external-program))
+    (sb-ext:process-input (process-of program)))
 
-#+sbcl
-(defmethod input-of ((program external-program))
-  (sb-ext:process-input (process-of program)))
+  (defmethod output-of ((program external-program))
+    (sb-ext:process-output (process-of program)))
 
-#+lispworks
-(defmethod input-of ((program external-program))
-  (process-input (process-of program)))
+  (defmethod error-of ((program external-program))
+    (sb-ext:process-error (process-of program)))
 
-#+sbcl
-(defmethod output-of ((program external-program))
-  (sb-ext:process-output (process-of program)))
+  (defmethod wait-for ((program external-program) &optional check-for-stopped)
+    (sb-ext:process-wait (process-of program) check-for-stopped))
 
-#+lispworks
-(defmethod output-of ((program external-program))
-  (process-output (process-of program)))
+  (defmethod status-of ((program external-program))
+    (sb-ext:process-status (process-of program)))
 
-#+sbcl
-(defmethod error-of ((program external-program))
-  (sb-ext:process-error (process-of program)))
+  (defmethod exit-code-of ((program external-program))
+    (sb-ext:process-exit-code (process-of program)))
 
-#+lispworks
-(defmethod error-of ((program external-program))
-  (process-error (process-of program)))
+  (defmethod close-process ((program external-program))
+    (sb-ext:process-close (process-of program)))
 
-#+sbcl
-(defmethod wait-for ((program external-program) &optional check-for-stopped)
-  (sb-ext:process-wait (process-of program) check-for-stopped))
+  (defmethod kill-process ((program external-program) signal
+                           &optional (whom :pid))
+    (sb-ext:process-kill (process-of program) signal whom)))
 
-#+lispworks
-(defmethod wait-for ((program external-program) &optional check-for-stopped)
- (declare (ignore program check-for-stopped)))
+#+:lispworks
+(progn
+  (defstruct process
+    (id 0)
+    (input nil)
+    (output nil)
+    (error nil)
+    (exit-code nil))
+  
+  (defmethod initialize-instance :after ((program external-program)
+                                         &rest process-args &key)
+    (let ((proc-args (append (list :save-exit-status t)
+                             (remove-args '(:echo :search :program :args)
+                                          process-args))))
+      (multiple-value-bind (stream error-stream pid)
+          (apply #'system:run-shell-command
+                 (format nil "sh -c '~a ~{~a~^ ~}'"
+                         (program-of program) (args-of program)) proc-args)
+        (setf (slot-value program 'process)
+              (make-process :id pid :input stream :output stream
+                            :error error-stream)))))
+  (defmethod input-of ((program external-program))
+    (process-input (process-of program)))
 
-#+sbcl
-(defmethod status-of ((program external-program))
-  (sb-ext:process-status (process-of program)))
+  (defmethod output-of ((program external-program))
+    (process-output (process-of program)))
 
-#+lispworks
-(defmethod status-of ((program external-program))
-  nil)
+  (defmethod error-of ((program external-program))
+    (process-error (process-of program)))
 
-#+sbcl
-(defmethod exit-code-of ((program external-program))
-  (sb-ext:process-exit-code (process-of program)))
+  (defmethod wait-for ((program external-program) &optional check-for-stopped)
+    (declare (ignore program check-for-stopped))
+    nil)
 
-#+lispworks
-(defmethod exit-code-of ((program external-program))
-  (system:pid-exit-status (process-id (process-of program))))
+  (defmethod status-of ((program external-program))
+    nil)
 
-#+sbcl
-(defmethod close-process ((program external-program))
-  (sb-ext:process-close (process-of program)))
+  (defmethod exit-code-of ((program external-program))
+    (system:pid-exit-status (process-id (process-of program))))
 
-#+lispworks
-(defmethod close-process ((program external-program))
-  (let ((output (process-output (process-of program)))
-        (error (process-error (process-of program))))
-    (when (and output (open-stream-p output))
-      (close output))
-    (when (and error (open-stream-p error))
-      (close error))))
+  (defmethod close-process ((program external-program))
+    (let ((output (process-output (process-of program)))
+          (error (process-error (process-of program))))
+      (when (and output (open-stream-p output))
+        (close output))
+      (when (and error (open-stream-p error))
+        (close error))))
 
-#+sbcl
-(defmethod kill-process ((program external-program) signal
-                         &optional (whom :pid))
-  (sb-ext:process-kill (process-of program) signal whom))
-
-#+lispworks
-(defmethod kill-process ((program external-program) signal
-                         &optional whom)
-  (declare (ignore program signal whom)))
-
-(defun run-program (program args &rest initargs)
-  (apply #'make-instance 'external-program :program program :args args
-         :allow-other-keys t initargs))
-
+  (defmethod kill-process ((program external-program) signal
+                           &optional whom)
+    (declare (ignore program signal whom))
+    nil))
