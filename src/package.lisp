@@ -23,6 +23,7 @@
   (:export
    ;; Specials
    #:*empty-field*
+   #:*remote-pathname-defaults*
 
    ;; Conditions
    #:io-error
@@ -92,7 +93,9 @@
    #:cli-arg-parser
    #:cli-arg-value
    #:quit-lisp
-   
+
+   #:absolute-pathname-p
+   #:relative-pathname-p
    #:make-tmp-pathname
    #:make-pathname-gen
    #:make-pathname-ext
@@ -100,6 +103,14 @@
    #:external-merge-sort
 
    #:rsh-exec
+   #:merge-remote-pathnames
+   #:rsh-list-directory
+   #:rsh-file-exists-p
+   #:rsh-directory-exists-p
+   #:rsh-files-exist-p
+   #:rsh-directories-exist-p
+   #:rsh-make-directory
+   #:rsh-ensure-directories-exist
    
    ;; Macros
    #:define-line-parser

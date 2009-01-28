@@ -20,6 +20,16 @@
 (defparameter *default-tmpdir* "/tmp"
   "The default temporary file directory.")
 
+(defun absolute-pathname-p (pathspec)
+  "Returns T if PATHSPEC is a pathname designator for an absolute file
+or directory, or NIL otherwise."
+  (eql :absolute (first (pathname-directory (pathname pathspec)))))
+
+(defun relative-pathname-p (pathspec)
+  "Returns T if PATHSPEC is a pathname designator for a relative file
+or directory, or NIL otherwise."
+  (eql :relative (first (pathname-directory (pathname pathspec)))))
+
 (defun make-tmp-pathname (&key (tmpdir *default-tmpdir*)
                           (basename "") (type "tmp"))
   "Returns a pathname suitable for use as a temporary file. The

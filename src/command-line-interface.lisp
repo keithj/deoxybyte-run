@@ -59,10 +59,12 @@
 
 #+:sbcl
 (defun print-backtrace (condition stream)
+  (declare (ignore condition))
   (sb-debug:backtrace 20 stream))
 
 #+:lispworks
 (defun print-backtrace (condition stream)
+  (declare (ignore condition))
   (let ((*debug-io* stream))
     (dbg:with-debugger-stack ()
       (dbg:bug-backtrace nil))))
