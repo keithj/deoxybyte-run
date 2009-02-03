@@ -18,7 +18,10 @@
 (in-package :cl-io-utilities)
 
 (defclass external-program ()
-  ((program :initarg :program
+  ((shell :initform "sh"
+          :initarg :shell
+          :reader shell-of)
+   (program :initarg :program
             :reader program-of
             :documentation "The name of the external program to be
 executed.")
@@ -66,11 +69,13 @@ ways."))
 #+:sbcl
 (progn
   (defmethod initialize-instance :after ((program external-program)
-                                       &rest process-args &key)
+                                         &rest process-args &key)
   (let ((proc-args (remove-args '(:echo :program :args) process-args)))
     (setf (slot-value program 'process)
-          (apply #'sb-ext:run-program
-                 (program-of program) (args-of program) proc-args))))
+          (apply #'sb-ext:run-program (shell-of program)
+                 (list "-c" (format nil "~a ~{~a~^ ~}"
+                                    (program-of program) (args-of program)))
+                 proc-args))))
 
   (defmethod input-of ((program external-program))
     (sb-ext:process-input (process-of program)))
@@ -113,8 +118,10 @@ ways."))
                                           process-args))))
       (multiple-value-bind (stream error-stream pid)
           (apply #'system:run-shell-command
-                 (format nil "sh -c '~a ~{~a~^ ~}'"
-                         (program-of program) (args-of program)) proc-args)
+                 (format nil "~a -c '~a ~{~a~^ ~}'"
+                         (shell-of program)
+                         (program-of program) (args-of program))
+                 proc-args)
         (setf (slot-value program 'process)
               (make-process :id pid :input stream :output stream
                             :error error-stream)))))
