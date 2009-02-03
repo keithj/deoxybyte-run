@@ -21,6 +21,8 @@
 (defparameter *remote-pathname-defaults* (pathname "/")
   "The defaults used to fill in remote pathnames.")
 
+(defparameter *default-remote-host* "localhost")
+
 (defparameter *rsh-executable* "rsh"
   "The rsh executable name.")
 (defparameter *ls-executable* "ls"
@@ -49,13 +51,15 @@
     (format stream "#<RSH host:~a command: ~a exit: ~d>" host (rest args)
             exit-code)))
 
-(defun rsh-exec (host &rest command)
+(defun rsh-exec (command &key (host *default-remote-host*))
   "Executes COMMAND on HOST using rsh/ssh and returns an instance of
 {defclass rsh} . If the command returns a non-zero exit code, a
 NON-ZERO-EXIT-ERROR error is raised."
   (let ((rsh (make-instance 'rsh :program *rsh-executable*
-                                 :host host :args (cons host command)
+                                 :host host
+                                 :args (list host command)
                                  :input :stream :output :stream
+                                 :pty nil
                                  :search t :wait *wait-for-rsh-process*
                                  :allow-other-keys t)))
     (if (zerop (exit-code-of rsh))
@@ -68,7 +72,8 @@ NON-ZERO-EXIT-ERROR error is raised."
 components from the defaults given by *remote-pathname-defaults*."
   (merge-pathnames pathname defaults))
 
-(defun rsh-list-directory (host pathspec &key (ignore-backups t) filetype)
+(defun rsh-list-directory (pathspec &key (host *default-remote-host*)
+                           (ignore-backups t) filetype)
   "Returns a list of namestrings of files in directory PATHSPEC on
 HOST. PATHSPEC is first merged with remote pathname defaults. If
 IGNORE-BACKUPS is T (the default) then tilda backup files are
@@ -85,78 +90,89 @@ files and directories."
                          (:directory dirs)
                          ((nil) (nconc dirs files)))))))
 
-(defun rsh-file-exists-p (host filespec)
+(defun rsh-file-exists-p (filespec &key (host *default-remote-host*))
   "Returns T if file FILESPEC exists on HOST, or NIL
 otherwise. FILESPEC is first merged with remote pathname defaults."
   (let ((file (merge-remote-pathnames (fad:pathname-as-file filespec))))
     (multiple-value-bind (ps fs)
-        (right-trim-path file)
+        (parse-directory-path file)
       (rsh-pathname-exists-p host ps fs :filetype :file))))
 
-(defun rsh-directory-exists-p (host pathspec)
+(defun rsh-directory-exists-p (pathspec &key (host *default-remote-host*))
   "Returns T if PATHSPEC exists on HOST, or NIL otherwise. PATHSPEC is
 first merged with remote pathname defaults."
   (let ((dir (merge-remote-pathnames (fad:pathname-as-directory pathspec))))
     (multiple-value-bind (ps1 ps2)
-        (right-trim-path dir)
+        (parse-directory-path dir)
       (rsh-pathname-exists-p host ps1 ps2 :filetype :directory))))
 
-(defun rsh-files-exist-p (host &rest filespecs)
+(defun rsh-files-exist-p (filespecs &key (host *default-remote-host*))
   "Returns T if all FILESPECS exist in directory on HOST, or NIL
 otherwise. Each FILESPEC is first merged with remote pathname
 defaults."
-  (subsetp filespecs (rsh-list-directory host *remote-pathname-defaults*
-                                         :filetype :file) :test #'equal))
+  (subsetp filespecs (rsh-list-directory *remote-pathname-defaults*
+                                         :host host  :filetype :file)
+           :test #'equal))
 
-(defun rsh-directories-exist-p (host &rest pathspecs)
+(defun rsh-directories-exist-p (pathspecs &key (host *default-remote-host*))
   "Returns T if all PATHSPECS exist in directory on HOST, or NIL
 otherwise. Each PATHSPEC is first merged with remote pathname
 defaults."
   (subsetp (mapcar (lambda (ps)
                      (namestring (fad:pathname-as-directory ps))) pathspecs)
-           (rsh-list-directory host *remote-pathname-defaults*
-                               :filetype :directory) :test #'equal))
+           (rsh-list-directory *remote-pathname-defaults*
+                               :host host :filetype :directory)
+           :test #'equal))
 
-(defun rsh-make-directory (host pathspec)
+(defun rsh-make-directory (pathspec &key (host *default-remote-host*))
   "Creates a new directory specified by PATHSPEC on HOST and returns
 PATHSPEC. PATHSPEC is first merged with remote pathname defaults."
   (rsh-mkdir host pathspec))
 
-(defun rsh-ensure-directories-exist (host pathspec)
+(defun rsh-ensure-directories-exist (pathspec
+                                     &key (host *default-remote-host*))
   "Ensures that PATHSPEC exists on HOST, creating addional parent
-directories as required.  PATHSPEC is first merged with remote
-pathname defaults."
+directories as required. PATHSPEC is first merged with remote pathname
+defaults."
   (rsh-mkdir host pathspec "-p"))
 
-(defun rsh-pathname-exists-p (host pathname1 pathname2 &key filetype)
-  "Returns T if PATHNAME1 exists in directory PATHNAME2 on HOST, using
-RSH-LIST-FN to find the candidates for PATHNAME1."
+(defun rsh-pathname-exists-p (host parent-pathname child-pathname
+                              &key filetype)
+  "Returns T if CHILD-PATHNAME exists in directory PARENT-PATHNAME on
+HOST, using {defun rsh-list-directory} to find the candidates for
+CHILD-PATHNAME."
   (some (lambda (pn)
-          (equal pn (namestring pathname2)))
-        (rsh-list-directory host pathname1 :filetype filetype)))
+          (equal pn (namestring child-pathname)))
+        (rsh-list-directory parent-pathname :host host :filetype filetype)))
 
 (defun rsh-ls (host pathspec &optional (ignore-backups t))
   "Returns a list of pathspecs in PATHSPEC on HOST. If IGNORE-BACKUPS
 is T (the default) then tilda backup files are ignored."
-  (let ((rsh (apply #'rsh-exec host *ls-executable*
-                    (if ignore-backups
-                        (list "-B" "-p" pathspec)
-                      (list "-p" pathspec)))))
+  (let ((rsh (rsh-exec
+              (format nil "~a ~{~a ~}"
+                      *ls-executable* (if ignore-backups
+                                          (list "-B" "-p" pathspec)
+                                        (list "-p" pathspec)))
+              :host host)))
     (unwind-protect
          (loop
             with stream = (output-of rsh)
             for line = (read-line stream nil nil)
-            while line
-            collect line)
+            while line collect line)
       (close-process rsh))))
 
 (defun rsh-mkdir (host pathspec &rest mkdir-args)
   "Executes mkdir to create a directory specified by PATHSPEC on HOST
 using mkdir arguments MKDIR-ARGS. Returns PATHSPEC."
-  (let ((dir (fad:pathname-as-directory pathspec)))
+  (let ((dir (merge-remote-pathnames (fad:pathname-as-directory pathspec))))
     (cond ((absolute-pathname-p dir)
-           (close-process (apply #'rsh-exec host *mkdir-executable*
-                                 (append mkdir-args (list pathspec))))
+           (close-process
+            (rsh-exec (format nil "'if [[ ! -de ~a ]] ; then ~a ~{~a ~}~a ; fi'"
+                              (namestring pathspec)
+                              *mkdir-executable*
+                              mkdir-args
+                              (namestring pathspec))
+                      :host host))
            pathspec)
           (t
            (error 'invalid-argument-error
@@ -164,7 +180,7 @@ using mkdir arguments MKDIR-ARGS. Returns PATHSPEC."
                   :args pathspec
                   :text "the pathspec must be absolute, not relative")))))
 
-(defun right-trim-path (pathname)
+(defun parse-directory-path (pathname)
   "Returns two values, being the root of PATHNAME with the terminal
 file or directory component removed and the removed component itself."
   (if (fad:directory-pathname-p pathname)

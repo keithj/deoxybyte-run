@@ -23,6 +23,7 @@
   (:export
    ;; Specials
    #:*empty-field*
+   #:*default-remote-host*
    #:*remote-pathname-defaults*
 
    ;; Conditions
@@ -35,6 +36,7 @@
    #:incompatible-argument
    #:unmatched-option
    #:unknown-option
+   #:non-zero-exit-error
 
    #:general-parse-error
    #:malformed-record-error
