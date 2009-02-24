@@ -30,6 +30,13 @@ or directory, or NIL otherwise."
 or directory, or NIL otherwise."
   (eql :relative (first (pathname-directory (pathname pathspec)))))
 
+(defun parse-filename (pathspec)
+  "Returns a new pathame that represents the file component of
+PATHSPEC."
+  (let ((filename (fad:pathname-as-file pathspec)))
+    (make-pathname :name (pathname-name filename)
+                   :type (pathname-type filename))))
+
 (defun make-tmp-pathname (&key (tmpdir *default-tmpdir*)
                           (basename "") (type "tmp"))
   "Returns a pathname suitable for use as a temporary file. The

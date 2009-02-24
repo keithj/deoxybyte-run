@@ -23,4 +23,5 @@
                         :serial t
                         :pathname "src/test/"
                         :components ((:file "package")
-                                     (:file "cl-io-utilities-test")))))
+                                     (:file "cl-io-utilities-test")
+                                     (:file "ssh-test")))))

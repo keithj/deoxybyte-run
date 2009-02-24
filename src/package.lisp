@@ -52,6 +52,7 @@
 
    #:external-program
    #:rsh
+   #:ssh-session
    
    ;; Generics
    #:push-line
@@ -75,6 +76,20 @@
    #:kill-process
 
    #:host-of
+   #:user-of
+   #:remote-shell-of
+   #:remote-environment-of
+   #:close-session
+   #:open-session-p
+   #:remote-command
+   #:get-env
+   #:set-env
+   #:get-directory
+   #:set-directory
+   #:list-directory
+   #:file-exists-p
+   #:make-directory
+   #:delete-directory-and-files
    
    ;; Functions
    #:make-line-input-stream
@@ -98,6 +113,7 @@
 
    #:absolute-pathname-p
    #:relative-pathname-p
+   #:parse-filename
    #:make-tmp-pathname
    #:make-pathname-gen
    #:make-pathname-ext
@@ -113,6 +129,8 @@
    #:rsh-directories-exist-p
    #:rsh-make-directory
    #:rsh-ensure-directories-exist
+
+   #:open-session
    
    ;; Macros
    #:define-line-parser

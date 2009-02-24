@@ -30,9 +30,14 @@
             :initarg :program
             :reader program-of
             :documentation "The object that failed to return a zero
-            exit code."))
+            exit code.")
+   (exit-code :initform nil
+              :initarg :exit-code
+              :reader exit-code-of
+              :documentation "The exit code."))
   (:report (lambda (condition stream)
-             (format stream "Non-zero exit code ~a ~@[: ~a~]"
+             (format stream "Non-zero exit code~@[ ~a~] from ~a ~@[: ~a~]"
+                     (exit-code-of condition)
                      (program-of condition)
                      (text-of condition))))
   (:documentation "An error that is raised when an external program

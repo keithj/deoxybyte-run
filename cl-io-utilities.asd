@@ -54,6 +54,8 @@
                            (:file "external-program")
                            (:file "conditions")
                            (:file "gnuplot")
+                           (:file "ssh")
+                           (:file "ssh-operations")
                            (:file "rsh"))
               :depends-on (:core))
      (:lift-test-config :cl-io-utilities-test
