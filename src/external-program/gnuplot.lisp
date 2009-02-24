@@ -126,7 +126,7 @@ position and style.")))
       (error 'invalid-argument-error
              :params '(:categories :values)
              :args (list categories values)
-             :text (msg "The category and value sequences"
+             :text (txt "The category and value sequences"
                         "are not the same length.")))))
 
 (defgeneric length-of (series)

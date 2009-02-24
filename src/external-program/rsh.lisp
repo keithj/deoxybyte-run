@@ -17,18 +17,25 @@
 
 (in-package :cl-io-utilities)
 
-(declaim (type pathname *remote-pathname-defaults*))
-(defparameter *remote-pathname-defaults* (pathname "/")
-  "The defaults used to fill in remote pathnames.")
-
-(defparameter *default-remote-host* "localhost")
-
-(defparameter *rsh-executable* "rsh"
+(defparameter *rsh-executable* "ssh"
   "The rsh executable name.")
 (defparameter *ls-executable* "ls"
   "The ls executable name.")
 (defparameter *mkdir-executable* "mkdir"
   "The mkdir executable name.")
+
+(defparameter *rsh-shell* :tcsh
+  "The shell on the remote host.")
+(defparameter *rsh-tcsh-commands*
+  (pairlis '(:rsh-ls :rsh-mkdir)
+           '("[ -d ~a ] && ~a ~{~a ~}"
+             "[ ! -d ~a ] && ~a ~{~a ~}~a"))
+  "tcsh style command templates.")
+(defparameter *rsh-sh-commands*
+  (pairlis '(:rsh-ls :rsh-mkdir)
+           '("[ -d ~a ] && ~a ~{~a ~}"
+             "[ ! -d ~a ] && ~a ~{~a ~}~a"))
+  "sh style command templates.")
 
 (defparameter *wait-for-rsh-process*
   #+:sbcl t
@@ -51,20 +58,33 @@
     (format stream "#<RSH host:~a command: ~a exit: ~d>" host (rest args)
             exit-code)))
 
-(defun rsh-exec (command &key (host *default-remote-host*))
+(defun rsh-cmd-template (key)
+  "Returns a command template for the rsh shell indicated by symbol
+KEY."
+  (ecase *rsh-shell*
+    ((:sh :bash) (assocdr key *rsh-sh-commands*))
+    ((:csh :tcsh) (assocdr key *rsh-tcsh-commands*))))
+
+(defun rsh-exec (command &key (host *default-remote-host*)
+                 (non-zero-error t) environment)
   "Executes COMMAND on HOST using rsh/ssh and returns an instance of
 {defclass rsh} . If the command returns a non-zero exit code, a
 NON-ZERO-EXIT-ERROR error is raised."
-  (let ((rsh (make-instance 'rsh :program *rsh-executable*
+  (let ((rsh (make-instance 'rsh :shell "sh"
+                                 :program *rsh-executable*
                                  :host host
                                  :args (list host command)
                                  :input :stream :output :stream
                                  :pty nil
-                                 :search t :wait *wait-for-rsh-process*
-                                 :allow-other-keys t)))
-    (if (zerop (exit-code-of rsh))
-        rsh
-      (error 'non-zero-exit-error :program rsh))))
+                                 :search t
+                                 :wait *wait-for-rsh-process*
+                                 :environment environment)))
+    (cond ((zerop (exit-code-of rsh))
+           rsh)
+          (non-zero-error
+           (error 'non-zero-exit-error :program rsh))
+          (t
+           nil))))
 
 (defun merge-remote-pathnames (pathname
                                &optional (defaults *remote-pathname-defaults*))
@@ -74,7 +94,7 @@ components from the defaults given by *remote-pathname-defaults*."
 
 (defun rsh-list-directory (pathspec &key (host *default-remote-host*)
                            (ignore-backups t) filetype)
-  "Returns a list of namestrings of files in directory PATHSPEC on
+  "Returns a list of pathnames of files in directory PATHSPEC on
 HOST. PATHSPEC is first merged with remote pathname defaults. If
 IGNORE-BACKUPS is T (the default) then tilda backup files are
 ignored. The FILETYPE keyword may :file to return only
@@ -83,8 +103,10 @@ files and directories."
   (let ((dir (merge-remote-pathnames (fad:pathname-as-directory pathspec))))
     (loop
        for filename in (rsh-ls host (namestring dir) ignore-backups)
-       if (ends-with-char-p filename #\/) collect filename into dirs
-       else collect filename into files
+       if (ends-with-char-p filename #\/)
+       collect (fad:pathname-as-directory filename) into dirs
+       else
+       collect (fad:pathname-as-file filename) into files
        finally (return (ecase filetype
                          (:file files)
                          (:directory dirs)
@@ -110,9 +132,9 @@ first merged with remote pathname defaults."
   "Returns T if all FILESPECS exist in directory on HOST, or NIL
 otherwise. Each FILESPEC is first merged with remote pathname
 defaults."
-  (subsetp filespecs (rsh-list-directory *remote-pathname-defaults*
-                                         :host host  :filetype :file)
-           :test #'equal))
+  (subsetp (mapcar #'pathname filespecs)
+           (rsh-list-directory *remote-pathname-defaults* :host host
+                               :filetype :file) :test #'equal))
 
 (defun rsh-directories-exist-p (pathspecs &key (host *default-remote-host*))
   "Returns T if all PATHSPECS exist in directory on HOST, or NIL
@@ -142,17 +164,17 @@ defaults."
 HOST, using {defun rsh-list-directory} to find the candidates for
 CHILD-PATHNAME."
   (some (lambda (pn)
-          (equal pn (namestring child-pathname)))
+          (string= (namestring pn) (namestring child-pathname)))
         (rsh-list-directory parent-pathname :host host :filetype filetype)))
 
 (defun rsh-ls (host pathspec &optional (ignore-backups t))
   "Returns a list of pathspecs in PATHSPEC on HOST. If IGNORE-BACKUPS
 is T (the default) then tilda backup files are ignored."
   (let ((rsh (rsh-exec
-              (format nil "~a ~{~a ~}"
-                      *ls-executable* (if ignore-backups
-                                          (list "-B" "-p" pathspec)
-                                        (list "-p" pathspec)))
+              (format nil (rsh-cmd-template :rsh-ls)
+                      pathspec *ls-executable* (if ignore-backups
+                                                   (list "-B" "-p" pathspec)
+                                                 (list "-p" pathspec)))
               :host host)))
     (unwind-protect
          (loop
@@ -167,11 +189,9 @@ using mkdir arguments MKDIR-ARGS. Returns PATHSPEC."
   (let ((dir (merge-remote-pathnames (fad:pathname-as-directory pathspec))))
     (cond ((absolute-pathname-p dir)
            (close-process
-            (rsh-exec (format nil "'if [[ ! -de ~a ]] ; then ~a ~{~a ~}~a ; fi'"
-                              (namestring pathspec)
-                              *mkdir-executable*
-                              mkdir-args
-                              (namestring pathspec))
+            (rsh-exec (format nil (rsh-cmd-template :rsh-mkdir)
+                              (namestring pathspec) *mkdir-executable*
+                              mkdir-args (namestring pathspec))
                       :host host))
            pathspec)
           (t
