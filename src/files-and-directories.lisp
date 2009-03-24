@@ -37,6 +37,12 @@ PATHSPEC."
     (make-pathname :name (pathname-name filename)
                    :type (pathname-type filename))))
 
+(defun parse-directory (pathspec)
+  "Returns a new pathame that represents the last directory component
+of PATHSPEC."
+  (let ((directory (fad:pathname-as-directory pathspec)))
+    (fad:pathname-as-directory (first (last (pathname-directory directory))))))
+
 (defun make-tmp-pathname (&key (tmpdir *default-tmpdir*)
                           (basename "") (type "tmp"))
   "Returns a pathname suitable for use as a temporary file. The

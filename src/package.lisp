@@ -114,6 +114,7 @@
    #:absolute-pathname-p
    #:relative-pathname-p
    #:parse-filename
+   #:parse-directory
    #:make-tmp-pathname
    #:make-pathname-gen
    #:make-pathname-ext
