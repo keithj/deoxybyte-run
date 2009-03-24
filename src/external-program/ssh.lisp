@@ -37,7 +37,7 @@ NAME. NAME may be one of :sh :bash :csh or :tcsh ."
          :initarg :host
          :reader host-of
          :documentation "The remote host on which the session is
-         executed.")
+executed.")
    (user :initform nil
          :initarg :user
          :reader user-of
@@ -45,9 +45,8 @@ NAME. NAME may be one of :sh :bash :csh or :tcsh ."
    (remote-shell :initform :sh
                  :initarg :remote-shell
                  :reader remote-shell-of
-                 :documentation "The shell to be started on the remote
-                 host. If NIL, the default login shell for the user is
-                 used.")
+                 :documentation "The login shell for the user on the
+remote host.")
    (remote-environment :initform nil
                        :initarg :remote-environment
                        :reader remote-environment-of
@@ -96,7 +95,7 @@ Returns:
   (:documentation "Closes SESSION by sending an exit command and then
   closing in the streams to and from the ssh process."))
 
-(defun open-session (&key (host "localhost") user (remote-shell :sh)
+(defun open-session (&key (host (machine-instance)) user (remote-shell :sh)
                      remote-environment (timeout 10) keep-alive)
   "Opens a new SSH session on HOST and returns an {defclass ssh-session}
 object.
@@ -105,7 +104,7 @@ Key:
 
 - host (string): SSH host name (defaults to \"localhost\".
 - user (string): The SSH user name (defaults to the current user).
-- remote-shell (symbol): The shell to be used on the remote host.
+- remote-shell (symbol): The shell on the remote host.
 - remote-environment (alist): An association list used to set
   environment variables on the remote host at the start of the
   session. Keys and values may be strings or symbols.
@@ -118,7 +117,7 @@ Returns:
 - An {defclass ssh-session} object."
   (make-instance 'ssh-session :program "ssh"
                  :args (concatenate
-                        'list '("-o" "BatchMode=yes")
+                        'list '("-T" "-o" "BatchMode=yes")
                         (when timeout
                           (list "-o" (format nil "ConnectTimeout=~d"
                                              timeout)))
@@ -140,10 +139,16 @@ Returns:
   (with-accessors ((output output-of) (shell remote-shell-of)
                    (environment remote-environment-of))
       session
-    (when shell
-      (remote-command session
-                      (format nil "exec ~a" (remote-shell-executable shell))
-                      :void-command t))
+    ;; This is a workaround for a known tcsh issue. tcsh always prints
+    ;; these two messages on login:
+    ;;
+    ;; "Warning: no access to tty (Bad file descriptor)."
+    ;; "Thus no job control in this shell."
+    ;;
+    ;; This discards the first two lines when the remote shell is tcsh.
+    (when (eql :tcsh shell)
+      (read-response output)
+      (read-response output))
     (loop
        for (var . val) in environment
        do (set-env session var val))))
@@ -173,7 +178,10 @@ Returns:
                           (send-command "echo $?" input)
                           (parse-integer (first (read-response output))))
                       (parse-error ()
-                        (error 'non-zero-exit-error :program "echo $?"))))))
+                        (if non-zero-error
+                            (error 'non-zero-exit-error
+                                   :program "echo $?")
+                          -1))))))
         (cond ((and exit-code (zerop code))
                (values response code))
               ((not exit-code)
