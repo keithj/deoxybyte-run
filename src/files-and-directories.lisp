@@ -17,7 +17,7 @@
 
 (in-package :cl-io-utilities)
 
-(defparameter *default-tmpdir* "/tmp"
+(defparameter *default-tmpdir* "/tmp/"
   "The default temporary file directory.")
 
 (defun absolute-pathname-p (pathspec)
@@ -30,7 +30,7 @@ or directory, or NIL otherwise."
 or directory, or NIL otherwise."
   (eql :relative (first (pathname-directory (pathname pathspec)))))
 
-(defun parse-filename (pathspec)
+(defun parse-file (pathspec)
   "Returns a new pathame that represents the file component of
 PATHSPEC."
   (let ((filename (fad:pathname-as-file pathspec)))
@@ -42,6 +42,14 @@ PATHSPEC."
 of PATHSPEC."
   (let ((directory (fad:pathname-as-directory pathspec)))
     (fad:pathname-as-directory (first (last (pathname-directory directory))))))
+
+(defun ensure-file (filespec)
+  "Creates the file designated by FILESPEC, if it does not
+exist. Returns the pathname of FILESPEC."
+  (with-open-file (stream filespec :direction :output
+                   :if-does-not-exist :create
+                   :if-exists nil))
+  (pathname filespec))
 
 (defun make-tmp-pathname (&key (tmpdir *default-tmpdir*)
                           (basename "") (type "tmp"))
@@ -58,9 +66,8 @@ TYPE, defaulting to \"tmp\"."
            :text "temporary file directory does not exist"))
   (merge-pathnames (cl-fad:pathname-as-directory tmpdir)
                    (make-pathname :directory '(:relative)
-                                  :name
-                                  (format nil "~a~a" basename
-                                          (random most-positive-fixnum))
+                                  :name (format nil "~a~a" basename
+                                                (random most-positive-fixnum))
                                   :type type)))
 
 (defun make-pathname-gen (dir name &key type separator generator)
@@ -75,8 +82,7 @@ specify the type of the new pathnames."
              (merge-pathnames
               (fad:pathname-as-directory d)
               (make-pathname :directory '(:relative)
-                             :name
-                             (format nil "~a~@[~a~]~a" n s (next g))
+                             :name (format nil "~a~@[~a~]~a" n s (next g))
                              :type y))))
       (lambda (op)
         (let ((current (gen-pname dir name separator g type)))
@@ -98,7 +104,6 @@ pathname, otherwise the original type will be used."
   (let ((g (or generator (make-number-gen))))
     (lambda ()
       (make-pathname :directory (pathname-directory pathname)
-                     :name (format nil "~a~@[~a~]~a"
-                                   (pathname-name pathname)
+                     :name (format nil "~a~@[~a~]~a" (pathname-name pathname)
                                    separator (next g))
                      :type (or type (pathname-type pathname))))))
