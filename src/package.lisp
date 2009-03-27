@@ -122,7 +122,8 @@
 
    #:external-merge-sort
 
-   #:rsh-exec
+   #:run
+   #:rsh-run
    #:merge-remote-pathnames
    #:rsh-list-directory
    #:rsh-file-exists-p

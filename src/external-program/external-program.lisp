@@ -62,7 +62,7 @@ ways."))
 (defgeneric kill-process (program signal &optional whom)
   (:documentation ""))
 
-(defun run-program (program args &rest initargs)
+(defun run (program args &rest initargs)
   (apply #'make-instance 'external-program :program program :args args
          initargs))
 

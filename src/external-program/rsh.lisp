@@ -17,6 +17,12 @@
 
 (in-package :cl-io-utilities)
 
+(declaim (type pathname *remote-pathname-defaults*))
+(defparameter *remote-pathname-defaults* (pathname "/")
+  "The defaults used to fill in remote pathnames.")
+
+(defparameter *default-remote-host* "localhost")
+
 (defparameter *rsh-executable* "ssh"
   "The rsh executable name.")
 (defparameter *ls-executable* "ls"
@@ -65,8 +71,8 @@ KEY."
     ((:sh :bash) (assocdr key *rsh-sh-commands*))
     ((:csh :tcsh) (assocdr key *rsh-tcsh-commands*))))
 
-(defun rsh-exec (command &key (host *default-remote-host*)
-                 (non-zero-error t) environment)
+(defun rsh-run (command &key (host *default-remote-host*)
+                (non-zero-error t) environment)
   "Executes COMMAND on HOST using rsh/ssh and returns an instance of
 {defclass rsh} . If the command returns a non-zero exit code, a
 NON-ZERO-EXIT-ERROR error is raised."
@@ -170,7 +176,7 @@ CHILD-PATHNAME."
 (defun rsh-ls (host pathspec &optional (ignore-backups t))
   "Returns a list of pathspecs in PATHSPEC on HOST. If IGNORE-BACKUPS
 is T (the default) then tilda backup files are ignored."
-  (let ((rsh (rsh-exec
+  (let ((rsh (rsh-run
               (format nil (rsh-cmd-template :rsh-ls)
                       pathspec *ls-executable* (if ignore-backups
                                                    (list "-B" "-p" pathspec)
@@ -189,10 +195,10 @@ using mkdir arguments MKDIR-ARGS. Returns PATHSPEC."
   (let ((dir (merge-remote-pathnames (fad:pathname-as-directory pathspec))))
     (cond ((absolute-pathname-p dir)
            (close-process
-            (rsh-exec (format nil (rsh-cmd-template :rsh-mkdir)
-                              (namestring pathspec) *mkdir-executable*
-                              mkdir-args (namestring pathspec))
-                      :host host))
+            (rsh-run (format nil (rsh-cmd-template :rsh-mkdir)
+                             (namestring pathspec) *mkdir-executable*
+                             mkdir-args (namestring pathspec))
+                     :host host))
            pathspec)
           (t
            (error 'invalid-argument-error
