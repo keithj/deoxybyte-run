@@ -287,6 +287,13 @@
                  (ensure-condition gpu:invalid-argument-error
                                    (make-tmp-pathname :tmpdir bad-dir))))))
 
+(addtest (cl-io-utilities-tests) ensure-file/1
+  (let ((test-file (merge-pathnames "data/touch_test.txt")))
+    (ensure (not (probe-file test-file)))
+    (ensure-file test-file)
+    (ensure (probe-file test-file))
+    (delete-file test-file)))
+
 (addtest (cl-io-utilities-tests) gnuplot/1
   (let* ((png-filespec (namestring (merge-pathnames "data/xy-plot.png")))
          (plotter (gpt:run-gnuplot))
