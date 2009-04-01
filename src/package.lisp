@@ -52,7 +52,6 @@
 
    #:external-program
    #:rsh
-   #:ssh-session
    
    ;; Generics
    #:push-line
@@ -74,22 +73,7 @@
    #:exit-code-of
    #:close-process
    #:kill-process
-
-   #:host-of
-   #:user-of
-   #:remote-shell-of
-   #:remote-environment-of
-   #:close-session
-   #:open-session-p
-   #:remote-command
-   #:get-env
-   #:set-env
-   #:get-directory
-   #:set-directory
-   #:list-directory
-   #:file-exists-p
-   #:make-directory
-   #:delete-directory-and-files
+   #:run
    
    ;; Functions
    #:make-line-input-stream
@@ -123,6 +107,7 @@
    #:external-merge-sort
 
    #:rsh-exec
+   #:host-of
    #:merge-remote-pathnames
    #:rsh-list-directory
    #:rsh-file-exists-p
@@ -131,8 +116,6 @@
    #:rsh-directories-exist-p
    #:rsh-make-directory
    #:rsh-ensure-directories-exist
-
-   #:open-session
    
    ;; Macros
    #:define-line-parser
