@@ -47,8 +47,8 @@
   #+:sbcl t
   #+:lispworks nil
   #-(or :sbcl :lispworks) t
-  "Indicates whether Lisp program should wait for the rsh process, or
-  not.")
+  "Indicates whether the Lisp program should wait for the rsh process,
+  or not.")
 
 (defclass rsh (external-program)
   ((host :initarg :host

@@ -17,6 +17,13 @@
 
 (in-package :cl-io-utilities)
 
+(defparameter *wait-for-run-process*
+  #+:sbcl t
+  #+:lispworks nil
+  #-(or :sbcl :lispworks) t
+  "Indicates whether the Lisp program should wait for the run
+  process,or not.")
+
 (defclass external-program ()
   ((shell :initform "sh"
           :initarg :shell
@@ -62,9 +69,27 @@ ways."))
 (defgeneric kill-process (program signal &optional whom)
   (:documentation ""))
 
-(defun run (program args &rest initargs)
-  (apply #'make-instance 'external-program :program program :args args
-         initargs))
+(defun run (command &key (non-zero-error t) environment)
+  (let ((program (make-instance 'external-program
+                                :program "sh"
+                                :args (list "-c" command)
+                                :input :stream :output :stream :error :stream
+                                :pty nil
+                                :search t
+                                :wait t
+                                :environment environment)))
+    (cond ((and (integerp (exit-code-of program)) 
+                (zerop (exit-code-of program)))
+           program)
+          (non-zero-error
+           (error 'non-zero-exit-error :program program))
+          (t
+           nil))))
+
+(defmethod print-object ((program external-program) stream)
+  (with-accessors ((prg program-of) (args args-of) (exit-code exit-code-of))
+      program
+    (format stream "#<EXTERNAL-PROGRAM ~a ~a exit: ~d>" prg args exit-code)))
 
 #+:sbcl
 (progn
@@ -76,9 +101,9 @@ ways."))
                 for (key . val) in alist
                 collect (format nil "~a=~a" key val))))
       (multiple-value-bind (args vals)
-          (collect-args '(:input :output :error :if-input-does-not-exist
-                          :if-output-exists :if-error-exists :environment
-                          :search :pty :wait) process-args)
+          (collect-key-values '(:input :output :error :if-input-does-not-exist
+                                :if-output-exists :if-error-exists :environment
+                                :search :pty :wait) process-args)
         (let ((proc-args (loop
                             for arg in args
                             for val in vals
@@ -87,11 +112,11 @@ ways."))
                                     (list arg val)))))
           (setf (slot-value program 'process)
                 ;; Run directly
-                (apply #'sb-ext:run-program (program-of program)
-                       (args-of program)
-                       proc-args)
-
-                ;; Run inside another shell
+                 (apply #'sb-ext:run-program (program-of program)
+                        (args-of program)
+                        proc-args)
+                ;; Run inside another shell. This allows correct
+                ;; handling of environment variables
 ;;                 (apply #'sb-ext:run-program (shell-of program)
 ;;                        (list "-c" (format nil "~a ~{~a~^ ~}"
 ;;                                           (program-of program)
@@ -136,9 +161,9 @@ ways."))
                                          &rest process-args &key
                                          &allow-other-keys)
     (multiple-value-bind (args vals)
-        (collect-args '(:input :output :error :if-input-does-not-exist
-                        :if-output-exists :if-error-exists :environment
-                        :wait) process-args)
+        (collect-key-values '(:input :output :error :if-input-does-not-exist
+                              :if-output-exists :if-error-exists :environment
+                              :wait) process-args)
       (let ((proc-args
              (append (list :save-exit-status t)
                      (mapcar (lambda (keyword)
@@ -149,6 +174,7 @@ ways."))
                                                   for arg in args
                                                   for val in vals
                                                   nconc (list arg val))))))
+        (format t "~a ~a~%" args-of program) proc-args)
         (multiple-value-bind (stream error-stream pid)
             (apply #'system:run-shell-command
                    (format nil "~a -c '~a ~{~a~^ ~}'" (shell-of program)
@@ -156,7 +182,7 @@ ways."))
                            (args-of program)) proc-args)
           (setf (slot-value program 'process)
                 (make-process :id pid :input stream :output stream
-                              :error error-stream))))))
+                              :error error-stream)))))
   
   (defmethod input-of ((program external-program))
     (process-input (process-of program)))
@@ -172,7 +198,8 @@ ways."))
     (system:pid-exit-status (process-id (process-of program)) :wait t))
 
   (defmethod status-of ((program external-program))
-    (if (null (system:pid-exit-status (process-id (process-of program)) :wait nil))
+    (if (null (system:pid-exit-status (process-id (process-of program))
+                                      :wait nil))
         :running
       :exited))
 

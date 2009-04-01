@@ -85,7 +85,7 @@ those fields have acceptable values."
                      for arg-list in (list ,@field-args)
                      for start in field-starts
                      for end in field-ends
-                     unless (arg-value :ignore arg-list)
+                     unless (key-value :ignore arg-list)
                      collect (cons name
                                    (apply #'parse-field
                                           name line
