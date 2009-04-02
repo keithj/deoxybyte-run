@@ -69,15 +69,15 @@ ways."))
 (defgeneric kill-process (program signal &optional whom)
   (:documentation ""))
 
-(defun run (command &key (non-zero-error t) environment)
-  (let ((program (make-instance 'external-program
-                                :program "sh"
-                                :args (list "-c" command)
-                                :input :stream :output :stream :error :stream
-                                :pty nil
-                                :search t
-                                :wait t
-                                :environment environment)))
+(defun run (command &key (non-zero-error t) (environment nil environmentp))
+  (let ((program (apply #'make-instance 'external-program
+                        :program "sh"
+                        :args (list "-c" command)
+                        :input :stream :output :stream :error :stream
+                        :pty nil
+                        :search t
+                        :wait t
+                        (when environmentp (list :environment environment)))))
     (cond ((and (integerp (exit-code-of program)) 
                 (zerop (exit-code-of program)))
            program)
