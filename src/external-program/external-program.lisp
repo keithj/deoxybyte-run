@@ -46,25 +46,28 @@ allow creation of subclasses that handle these streams in defined
 ways."))
 
 (defgeneric input-of (program)
-  (:documentation ""))
+  (:documentation "Returns the input stream of PROGRAM."))
 
 (defgeneric output-of (program)
-  (:documentation ""))
+  (:documentation "Returns the output stream of PROGRAM."))
 
 (defgeneric error-of (program)
-  (:documentation ""))
+  (:documentation "Returns the error stream of PROGRAM."))
 
-(defgeneric wait-for (program &optional check-for-stopped)
-  (:documentation ""))
+(defgeneric wait-for (program)
+  (:documentation "Waits for PROGRAM to exit."))
 
 (defgeneric status-of (program)
-  (:documentation ""))
+  (:documentation "Returns keyword indicating the status of
+PROGRAM. One of :running :stopped :signaled or :exited ."))
 
 (defgeneric exit-code-of (program)
-  (:documentation ""))
+  (:documentation "Returns an integer exit code of PROGRAM, or NIL if
+the exit code is not available."))
 
 (defgeneric close-process (program)
-  (:documentation ""))
+  (:documentation "Closes the input, output and error streams of
+PROGRAM."))
 
 (defgeneric kill-process (program signal &optional whom)
   (:documentation ""))
@@ -89,7 +92,8 @@ ways."))
 (defmethod print-object ((program external-program) stream)
   (with-accessors ((prg program-of) (args args-of) (exit-code exit-code-of))
       program
-    (format stream "#<EXTERNAL-PROGRAM ~a ~a exit: ~d>" prg args exit-code)))
+    (format stream "#<EXTERNAL-PROGRAM ~s ~{~^~s ~} exit: ~d>"
+            prg args exit-code)))
 
 #+:sbcl
 (progn
@@ -132,8 +136,8 @@ ways."))
   (defmethod error-of ((program external-program))
     (sb-ext:process-error (process-of program)))
 
-  (defmethod wait-for ((program external-program) &optional check-for-stopped)
-    (sb-ext:process-wait (process-of program) check-for-stopped))
+  (defmethod wait-for ((program external-program))
+    (sb-ext:process-wait (process-of program) nil)) ; check-for-stopped nil
 
   (defmethod status-of ((program external-program))
     (sb-ext:process-status (process-of program)))
@@ -193,8 +197,7 @@ ways."))
   (defmethod error-of ((program external-program))
     (process-error (process-of program)))
 
-  (defmethod wait-for ((program external-program) &optional check-for-stopped)
-    (declare (ignore program check-for-stopped))
+  (defmethod wait-for ((program external-program))
     (system:pid-exit-status (process-id (process-of program)) :wait t))
 
   (defmethod status-of ((program external-program))
@@ -246,9 +249,8 @@ ways."))
   (defmethod error-of ((program external-program))
     (ccl:external-process-error-stream (process-of program)))
 
-  (defmethod wait-for ((program external-program) &optional check-for-stopped)
-    (declare (ignore program check-for-stopped))
-    nil)
+  (defmethod wait-for ((program external-program))
+    (error "WAIT-FOR is not supported on this platform."))
   
   (defmethod status-of ((program external-program))
     (ccl:external-process-status (process-of program)))
