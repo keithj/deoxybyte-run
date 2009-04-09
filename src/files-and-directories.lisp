@@ -23,8 +23,8 @@
 (defmacro with-tmp-directory ((dir &key (tmpdir *default-tmpdir*) (basename "")
                                    (if-exists :error) (mode 511))
                               &body body)
-  `(let ((dir (make-tmp-directory :tmpdir ,tmpdir :basename ,basename
-                                  :if-exists ,if-exists :mode ,mode)))
+  `(let ((,dir (make-tmp-directory :tmpdir ,tmpdir :basename ,basename
+                                   :if-exists ,if-exists :mode ,mode)))
     (unwind-protect
          (progn
            ,@body)
