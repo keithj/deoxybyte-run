@@ -27,7 +27,6 @@
   ()
   (:documentation "The parent type of all IO warning conditions."))
 
-
 ;;; Command line interface conditions
 (define-condition cli-error (error)
   ()

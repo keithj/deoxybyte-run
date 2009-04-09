@@ -20,6 +20,16 @@
 (defparameter *default-tmpdir* "/tmp/"
   "The default temporary file directory.")
 
+(defmacro with-tmp-directory ((dir &key (tmpdir *default-tmpdir*) (basename "")
+                                   (if-exists :error) (mode 511))
+                              &body body)
+  `(let ((dir (make-tmp-directory :tmpdir ,tmpdir :basename ,basename
+                                  :if-exists ,if-exists :mode ,mode)))
+    (unwind-protect
+         (progn
+           ,@body)
+      (fad:delete-directory-and-files ,dir))))
+
 (defun absolute-pathname-p (pathspec)
   "Returns T if PATHSPEC is a pathname designator for an absolute file
 or directory, or NIL otherwise."
@@ -43,7 +53,7 @@ of PATHSPEC."
   (let ((directory (fad:pathname-as-directory pathspec)))
     (fad:pathname-as-directory (first (last (pathname-directory directory))))))
 
-(defun ensure-file (filespec)
+(defun ensure-file-exists (filespec)
   "Creates the file designated by FILESPEC, if it does not
 exist. Returns the pathname of FILESPEC."
   (with-open-file (stream filespec :direction :output
@@ -51,14 +61,13 @@ exist. Returns the pathname of FILESPEC."
                    :if-exists nil))
   (pathname filespec))
 
-(defun make-tmp-pathname (&key (tmpdir *default-tmpdir*)
-                          (basename "") (type "tmp"))
-  "Returns a pathname suitable for use as a temporary file. The
-directory component of the new pathname is TMPDIR, defaulting to
-*DEFAULT-TMPDIR*. The NAME component of the new pathname is a
-concatenation of BASENAME, defaulting to an empty string, and a
-pseudo-random number. The type component of the new pathname is
-TYPE, defaulting to \"tmp\"."
+(defun make-tmp-pathname (&key (tmpdir *default-tmpdir*) (basename "") type)
+  "Returns a pathname suitable for use as a temporary file or
+directory. The directory component of the new pathname is TMPDIR,
+defaulting to *DEFAULT-TMPDIR*. The NAME component of the new pathname
+is a concatenation of BASENAME, defaulting to an empty string, and a
+pseudo-random number. The type component of the new pathname is TYPE,
+defaulting to NIL."
   (unless (cl-fad:directory-exists-p tmpdir)
     (error 'invalid-argument-error
            :params 'tmpdir
@@ -69,6 +78,25 @@ TYPE, defaulting to \"tmp\"."
                                   :name (format nil "~a~a" basename
                                                 (random most-positive-fixnum))
                                   :type type)))
+
+(defun make-tmp-directory (&key (tmpdir *default-tmpdir*) (basename "")
+                           (if-exists :error) (mode 511))
+  "Creates a new temporary directory and returns its pathname. The new
+directory's pathname is created using {defun make-tmp-pathname} . The
+IF-EXISTS keyword argument determines what happens if a directory by
+that name already exists; options are :error which causes a FILE-ERROR
+to be raised, :supersede which causes the existing directory to be
+deleted and a new, empty one created and NIL where no directory is
+created an NIL is returned to indicate failure."
+  (let ((pathname (fad:pathname-as-directory
+                   (make-tmp-pathname :tmpdir tmpdir :basename basename))))
+    (ecase if-exists
+      (:error (if (fad:directory-exists-p pathname)
+                  (error 'file-error :pathname pathname)))
+      (:supersede (if (fad:directory-exists-p pathname)
+                      (fad:delete-directory-and-files pathname)))
+      ((nil) nil))
+    (fad:pathname-as-directory (ensure-directories-exist pathname :mode mode))))
 
 (defun make-pathname-gen (dir name &key type separator generator)
   "Returns a function of zero arity that generates pathnames when

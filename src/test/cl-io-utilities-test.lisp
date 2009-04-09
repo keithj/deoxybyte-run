@@ -270,10 +270,11 @@
   (ensure (pathnamep (make-tmp-pathname)))
   (ensure (string= "/tmp/" (directory-namestring (make-tmp-pathname))))
   (ensure (integerp (parse-integer (pathname-name (make-tmp-pathname)))))
-  (ensure (string= "tmp" (pathname-type (make-tmp-pathname))))
+  (ensure-null (pathname-type (make-tmp-pathname)))
   ;; Test optional arguments
   (ensure (string= "/" (directory-namestring (make-tmp-pathname
                                               :tmpdir "/"))))
+  (ensure (string= "tmp" (pathname-type (make-tmp-pathname :type "tmp"))))
   (ensure (string= "foo" (pathname-name (make-tmp-pathname :tmpdir "/tmp"
                                                            :basename "foo"))
                    :end2 3))
@@ -287,10 +288,38 @@
                  (ensure-condition gpu:invalid-argument-error
                                    (make-tmp-pathname :tmpdir bad-dir))))))
 
-(addtest (cl-io-utilities-tests) ensure-file/1
+(addtest (cl-io-utilities-tests) make-tmp-directory/1
+  ;; Test defaults
+  (let ((tmpdir (make-tmp-directory)))
+    (unwind-protect
+         (progn
+           (ensure (pathnamep tmpdir))
+           (ensure (equalp '(:absolute "tmp")
+                           (subseq (pathname-directory tmpdir) 0 2)))
+           (ensure (parse-integer (third (pathname-directory tmpdir))))
+           (ensure-null (pathname-type tmpdir))
+           (ensure (fad:directory-exists-p tmpdir))
+           (ensure (fad:directory-pathname-p tmpdir)))
+      (fad:delete-directory-and-files tmpdir)))
+  ;; Test optional arguments. There need to be more tests in here to
+  ;; check :if-exists arguments
+  (ensure-directories-exist "/tmp/bar/")
+  (let ((tmpdir (make-tmp-directory :tmpdir "/tmp/bar" :basename "foo")))
+    (unwind-protect
+         (progn
+           (ensure (string= "foo" (fourth (pathname-directory tmpdir)) :end2 3))
+           (ensure (string= "bar" (third (pathname-directory tmpdir)) :end2 3)))
+      (fad:delete-directory-and-files tmpdir)))
+  ;; Test error conditions
+  (let ((bad-dir "/this-directory-does-not-exist/"))
+    (ensure (and (not (fad:directory-exists-p bad-dir))
+                 (ensure-condition gpu:invalid-argument-error
+                   (make-tmp-directory :tmpdir bad-dir))))))
+
+(addtest (cl-io-utilities-tests) ensure-file-exists/1
   (let ((test-file (merge-pathnames "data/touch_test.txt")))
     (ensure (not (probe-file test-file)))
-    (ensure-file test-file)
+    (ensure-file-exists test-file)
     (ensure (probe-file test-file))
     (delete-file test-file)))
 

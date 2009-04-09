@@ -99,8 +99,10 @@
    #:relative-pathname-p
    #:parse-file
    #:parse-directory
-   #:ensure-file
+   #:ensure-file-exists
    #:make-tmp-pathname
+   #:make-tmp-directory
+   #:with-tmp-directory
    #:make-pathname-gen
    #:make-pathname-ext
 
