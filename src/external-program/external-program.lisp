@@ -81,13 +81,15 @@ PROGRAM."))
                         :search t
                         :wait t
                         (when environmentp (list :environment environment)))))
-    (cond ((and (integerp (exit-code-of program)) 
-                (zerop (exit-code-of program)))
-           program)
-          (non-zero-error
-           (error 'non-zero-exit-error :program program))
-          (t
-           nil))))
+    (unwind-protect
+         (cond ((and (integerp (exit-code-of program)) 
+                     (zerop (exit-code-of program)))
+                program)
+               (non-zero-error
+                (error 'non-zero-exit-error :program program))
+               (t
+                nil))
+      (close-process program))))  ; close or leak file descriptors
 
 (defmethod print-object ((program external-program) stream)
   (with-accessors ((prg program-of) (args args-of) (exit-code exit-code-of))
