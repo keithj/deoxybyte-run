@@ -72,6 +72,9 @@ PROGRAM."))
 (defgeneric kill-process (program signal &optional whom)
   (:documentation ""))
 
+(defgeneric runningp (program)
+  (:documentation "Returns T if PROGRAM is running, or NIL otherwise."))
+
 (defun run (command &key (non-zero-error t) (environment nil environmentp))
   (let ((program (apply #'make-instance 'external-program
                         :program "sh"
@@ -89,7 +92,7 @@ PROGRAM."))
                 (error 'non-zero-exit-error :program program))
                (t
                 nil))
-      (close-process program))))  ; close or leak file descriptors
+      (close-process program)))) ; close or leak file descriptors
 
 (defmethod print-object ((program external-program) stream)
   (with-accessors ((prg program-of) (args args-of) (exit-code exit-code-of))
@@ -272,3 +275,6 @@ PROGRAM."))
                            &optional (whom :pid))
     (declare (ignore whom))
     (ccl:signal-external-process (process-of program) signal)))
+
+(defmethod runningp ((program external-program))
+  (eql :running (status-of program)))
