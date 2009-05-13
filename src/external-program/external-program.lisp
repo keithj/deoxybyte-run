@@ -232,8 +232,8 @@ PROGRAM."))
                                          &rest process-args &key
                                          &allow-other-keys)
     (multiple-value-bind (args vals)
-        (collect-args '(:input :output :error :if-input-does-not-exist
-                        :if-output-exists :if-error-exists :pty :wait)
+        (collect-key-values '(:input :output :error :if-input-does-not-exist
+                              :if-output-exists :if-error-exists :pty :wait)
                       process-args)
       (let ((proc-args (loop
                           for arg in args
