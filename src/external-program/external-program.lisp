@@ -255,7 +255,7 @@ PROGRAM."))
     (ccl:external-process-error-stream (process-of program)))
 
   (defmethod wait-for ((program external-program))
-    (error "WAIT-FOR is not supported on this platform."))
+    nil)
   
   (defmethod status-of ((program external-program))
     (ccl:external-process-status (process-of program)))
