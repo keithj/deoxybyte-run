@@ -15,7 +15,7 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(in-package :cl-io-utilities)
+(in-package :uk.co.deoxybyte-io)
 
 (define-condition external-program-error (error)
   ((text :initform nil

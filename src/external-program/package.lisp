@@ -15,9 +15,41 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(defpackage #:gnuplot
-  (:use #:common-lisp :cl-gp-utilities :cl-io-utilities)
-  (:nicknames #:gpt)
+(defpackage #:uk.co.deoxybyte-gnuplot
+  (:use #:common-lisp :uk.co.deoxybyte-utilities :uk.co.deoxybyte-io)
+  (:nicknames
+   #:deoxybyte-gnuplot
+   #:dxg
+   #:gpt)
+  (:export
+   ;; Classes
+   #:gnuplot
+   #:plot
+   #:2d-plot
+   #:axis
+   #:series
+   #:xy-series
+
+   ;; Generics
+   #:title-of
+   #:series-of
+   #:legend-of
+   #:x-axis-of
+   #:y-axis-of
+   #:position-of
+   #:range-of
+   #:label-of
+   #:tics-of
+   #:minor-tics-of
+   #:style-of
+   #:x-values-of
+   #:y-values-of
+   #:length-of
+   #:draw-plot
+
+   ;; Functions
+   #:run-gnuplot
+   #:stop-gnuplot)
   (:documentation "This package provides a simple CLOS interface for
 starting the Gnuplot program in a separate process and then using it
 to plot graphs in batch mode.
@@ -58,33 +90,4 @@ to the screen.
 ;;;   (draw-plot plotter plot :terminal :png :output "foo.png")
 ;;;   (draw-plot plotter plot :terminal :x11)
 ;;;   (sleep 5)
-;;;   (stop-gnuplot plotter))")
-  (:export
-   ;; Classes
-   #:gnuplot
-   #:plot
-   #:2d-plot
-   #:axis
-   #:series
-   #:xy-series
-
-   ;; Generics
-   #:title-of
-   #:series-of
-   #:legend-of
-   #:x-axis-of
-   #:y-axis-of
-   #:position-of
-   #:range-of
-   #:label-of
-   #:tics-of
-   #:minor-tics-of
-   #:style-of
-   #:x-values-of
-   #:y-values-of
-   #:length-of
-   #:draw-plot
-
-   ;; Functions
-   #:run-gnuplot
-   #:stop-gnuplot))
+;;;   (stop-gnuplot plotter))"))

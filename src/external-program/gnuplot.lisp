@@ -15,7 +15,7 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(in-package :gnuplot)
+(in-package :uk.co.deoxybyte-gnuplot)
 
 ;;; I find format cryptic, but it's very concise. The directives I'm
 ;;; using here are:
