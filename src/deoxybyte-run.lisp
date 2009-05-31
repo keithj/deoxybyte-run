@@ -15,7 +15,7 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(in-package :uk.co.deoxybyte-io)
+(in-package :uk.co.deoxybyte-run)
 
 (defparameter *wait-for-run-process*
   #+:sbcl t

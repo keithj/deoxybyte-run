@@ -15,7 +15,7 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(in-package :uk.co.deoxybyte-io)
+(in-package :uk.co.deoxybyte-run)
 
 (declaim (type pathname *remote-pathname-defaults*))
 (defparameter *remote-pathname-defaults* (pathname "/")

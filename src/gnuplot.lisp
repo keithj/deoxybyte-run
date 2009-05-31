@@ -15,7 +15,7 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(in-package :uk.co.deoxybyte-gnuplot)
+(in-package :uk.co.deoxybyte-run)
 
 ;;; I find format cryptic, but it's very concise. The directives I'm
 ;;; using here are:
@@ -28,7 +28,45 @@
 (defclass gnuplot (external-program)
   ()
   (:documentation "An instance of this class represents a Gnuplot
-process."))
+process that is used to plot graphs in batch mode.
+
+Plotting requires the creation of a plotter, in this case a running
+Gnuplot {defclass external-program} , and a {defclass plot}
+object. These are passed to {defmethod draw-plot} which renders to an
+output specified by additional keyword parameters.
+
+Plots themselves contain subordinate {defclass axis} objects, and one
+or more {defclass series} objects that contain the data to be
+represented.
+
+The mode of operation is that plot objects are independent of the
+plotter. Changing a slot value in a plot, axis or series will not
+cause an active plot to be updated.
+
+An example of an XY plot of one series, plotted to a PNG file and also
+to the screen.
+
+;;; (let ((plotter (run-gnuplot))
+;;;       (plot (make-instance
+;;;              '2d-plot
+;;;              :title "Foo"
+;;;              :legend '(:tmargin :left)
+;;;              :x-axis (make-instance 'axis :label "foo x"
+;;;                                     :position :x)
+;;;              :y-axis (make-instance 'axis :label "foo y"
+;;;                                     :position :y)
+;;;              :series (make-instance 'xy-series
+;;;                                     :x-values
+;;;                                     '(-1 0 3 4 5 8)
+;;;                                     :y-values
+;;;                                     '(-10 2 4 5 17 10)
+;;;                                     :style '(:linespoints
+;;;                                              :smooth
+;;;                                              :csplines)))))
+;;;   (draw-plot plotter plot :terminal :png :output "foo.png")
+;;;   (draw-plot plotter plot :terminal :x11)
+;;;   (sleep 5)
+;;;   (stop-gnuplot plotter))"))
 
 (defclass plot ()
   ((title :initform nil
