@@ -15,7 +15,7 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(defpackage #:uk.co.deoxybyte-run-test
+(defpackage :uk.co.deoxybyte-run-test
   (:use #:common-lisp #:deoxybyte-run #:lift)
   (:documentation "Deoxybyte run tests.")
   (:export #:deoxybyte-run-tests))

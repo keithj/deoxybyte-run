@@ -21,10 +21,10 @@
   (when (asdf:find-system :deoxybyte-systems nil)
     (asdf:operate 'asdf:load-op :deoxybyte-systems)))
 
-(defpackage #:uk.co.deoxybyte-run-system
+(defpackage :uk.co.deoxybyte-run-system
   (:use :common-lisp :asdf :deoxybyte-systems))
 
-(in-package #:uk.co.deoxybyte-run-system)
+(in-package :uk.co.deoxybyte-run-system)
 
 (defsystem deoxybyte-run
     :name "deoxybyte-run"

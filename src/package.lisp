@@ -15,8 +15,8 @@
 ;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;;;
 
-(defpackage #:uk.co.deoxybyte-run
-  (:use #:common-lisp :uk.co.deoxybyte-utilities)
+(defpackage :uk.co.deoxybyte-run
+  (:use #:common-lisp #:deoxybyte-utilities #:deoxybyte-io)
   (:nicknames
    #:deoxybyte-run
    #:dxr)

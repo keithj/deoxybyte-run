@@ -43,13 +43,6 @@
              "[ ! -d ~a ] && ~a ~{~a ~}~a"))
   "sh style command templates.")
 
-(defparameter *wait-for-rsh-process*
-  #+:sbcl t
-  #+:lispworks nil
-  #-(or :sbcl :lispworks) t
-  "Indicates whether the Lisp program should wait for the rsh process,
-  or not.")
-
 (defclass rsh (external-program)
   ((host :initarg :host
          :reader host-of
@@ -83,7 +76,7 @@ NON-ZERO-EXIT-ERROR error is raised."
                                  :input :stream :output :stream
                                  :pty nil
                                  :search t
-                                 :wait *wait-for-rsh-process*
+                                 :wait *wait-for-run-process*
                                  :environment environment)))
     (cond ((zerop (exit-code-of rsh))
            rsh)
