@@ -37,6 +37,7 @@
               :serial t
               :pathname "src/"
               :components ((:file "package")
+                           (:file "generics")
                            (:file "conditions")
                            (:file "deoxybyte-run")
                            (:file "gnuplot")

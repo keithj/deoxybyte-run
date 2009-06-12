@@ -45,36 +45,6 @@ streams, such that they are always available via accessors and to
 allow creation of subclasses that handle these streams in defined
 ways."))
 
-(defgeneric input-of (program)
-  (:documentation "Returns the input stream of PROGRAM."))
-
-(defgeneric output-of (program)
-  (:documentation "Returns the output stream of PROGRAM."))
-
-(defgeneric error-of (program)
-  (:documentation "Returns the error stream of PROGRAM."))
-
-(defgeneric wait-for (program)
-  (:documentation "Waits for PROGRAM to exit."))
-
-(defgeneric status-of (program)
-  (:documentation "Returns keyword indicating the status of
-PROGRAM. One of :running :stopped :signaled or :exited ."))
-
-(defgeneric exit-code-of (program)
-  (:documentation "Returns an integer exit code of PROGRAM, or NIL if
-the exit code is not available."))
-
-(defgeneric close-process (program)
-  (:documentation "Closes the input, output and error streams of
-PROGRAM."))
-
-(defgeneric kill-process (program signal &optional whom)
-  (:documentation ""))
-
-(defgeneric runningp (program)
-  (:documentation "Returns T if PROGRAM is running, or NIL otherwise."))
-
 (defun run (command &key (non-zero-error t) (environment nil environmentp))
   (let ((program (apply #'make-instance 'external-program
                         :program "sh"
