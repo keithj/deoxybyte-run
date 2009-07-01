@@ -1,6 +1,8 @@
 ;;;
 ;;; Copyright (C) 2009 Keith James. All rights reserved.
 ;;;
+;;; This file is part of deoxybyte-run.
+;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
 ;;; the Free Software Foundation, either version 3 of the License, or
@@ -20,6 +22,14 @@
 (declaim (type pathname *remote-pathname-defaults*))
 (defparameter *remote-pathname-defaults* (pathname "/")
   "The defaults used to fill in remote pathnames.")
+
+(defparameter *wait-for-run-process*
+  #+:sbcl t
+  #+:lispworks nil
+  #+:ccl t
+  #-(or :sbcl :lispworks :ccl) t
+  "Indicates whether the Lisp program should wait for the run
+  process,or not.")
 
 (defparameter *default-remote-host* "localhost")
 

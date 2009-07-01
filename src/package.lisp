@@ -1,6 +1,8 @@
 ;;;
 ;;; Copyright (C) 2008-2009 Keith James. All rights reserved.
 ;;;
+;;; This file is part of deoxybyte-run.
+;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
 ;;; the Free Software Foundation, either version 3 of the License, or
@@ -21,14 +23,9 @@
    #:deoxybyte-run
    #:dxr)
   (:export
-   ;; Specials
-   #:*default-remote-host*
-   #:*remote-pathname-defaults*
-
-   ;; Conditions
+   ;; External programs
    #:external-program-error
    #:non-zero-exit-error
-
    #:external-program
    #:program-of
    #:args-of
@@ -45,6 +42,8 @@
    #:runningp
 
    ;; rsh
+   #:*default-remote-host*
+   #:*remote-pathname-defaults*
    #:rsh
    #:rsh-exec
    #:host-of
@@ -57,14 +56,13 @@
    #:rsh-make-directory
    #:rsh-ensure-directories-exist
 
-   ;; gnuplot
+   ;; Gnuplot
    #:gnuplot
    #:plot
    #:2d-plot
    #:axis
    #:series
    #:xy-series
-
    #:title-of
    #:series-of
    #:legend-of
@@ -80,7 +78,11 @@
    #:y-values-of
    #:length-of
    #:draw-plot
-
    #:run-gnuplot
    #:stop-gnuplot)
-  (:documentation ""))
+  (:documentation "The deoxybyte-run system is a compatability and
+convenience layer for running external programs. In addition, wrappers
+for some software are included:
+
+- Gnuplot
+- rsh"))

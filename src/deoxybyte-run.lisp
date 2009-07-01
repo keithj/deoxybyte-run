@@ -1,6 +1,8 @@
 ;;;
 ;;; Copyright (C) 2008-2009 Keith James. All rights reserved.
 ;;;
+;;; This file is part of deoxybyte-run.
+;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
 ;;; the Free Software Foundation, either version 3 of the License, or
@@ -27,7 +29,9 @@
 (defclass external-program ()
   ((shell :initform "sh"
           :initarg :shell
-          :reader shell-of)
+          :reader shell-of
+          :documentation "The shell under which to execute the
+external program.")
    (program :initarg :program
             :reader program-of
             :documentation "The name of the external program to be
@@ -46,6 +50,24 @@ allow creation of subclasses that handle these streams in defined
 ways."))
 
 (defun run (command &key (non-zero-error t) (environment nil environmentp))
+  "This is a convenience function that runs an external program
+specified by a pre-formatted shell command string.
+
+Arguments:
+
+- command (string): A shell command.
+
+Key:
+
+- non-zero-error (boolean): If T will raise a
+  {define-conditionnon-zero-exit-error} if the external program exits
+  with a non-zero exit code. The default is T.
+- environment (alist): An alist of keys and values describing the
+  environment
+
+Returns:
+
+- An instance of {defclass external-program}"
   (let ((program (apply #'make-instance 'external-program
                         :program "sh"
                         :args (list "-c" command)
@@ -53,7 +75,8 @@ ways."))
                         :pty nil
                         :search t
                         :wait t
-                        (when environmentp (list :environment environment)))))
+                        (when environmentp
+                          (list :environment environment)))))
     (unwind-protect
          (cond ((and (integerp (exit-code-of program)) 
                      (zerop (exit-code-of program)))
