@@ -34,6 +34,7 @@
                                      collect (code-char b))))
 
 (addtest (deoxybyte-run-tests) gnuplot/1
+  (ensure-directories-exist (merge-pathnames "data"))
   (let* ((png-filespec (namestring (merge-pathnames "data/xy-plot.png")))
          (plotter (run-gnuplot))
          (x #(0 1 2 3 4 5 6 7 8 9))
