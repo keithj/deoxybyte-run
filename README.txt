@@ -8,10 +8,40 @@ included:
 - rsh
 
 
+Installation
+
+deoxybyte-run uses ASDF for system definition. Copy or symlink
+deoxybyte-run.asd (and optionally deoxybyte-run-test.asd) to your
+asdf:*central-registry* and load deoxybyte-run with the asdf:operate
+function:
+
+ (asdf:operate 'asdf:load-op :deoxybyte-run)
+
+or with the equivalent deoxybyte-systems:load-system function:
+
+ (dxs:load-system :deoxybyte-run)
+
+
+Tests
+
+To run the unit and regression tests you need to have LIFT
+installed. Run the tests with the asdf:operate function:
+
+ (asdf:operate 'asdf:test-op :deoxybyte-run)
+
+or with the equivalent deoxybyte-systems:test-system function:
+
+ (dxs:test-system :deoxybyte-run)
+
+
 Documentation
 
 See the Lisp docstrings, particularly the package docstrings for an
-overview.
+overview. HTML documentation may be generated with the command:
+
+ (dxs:document-system :deoxybyte-run)
+
+at the REPL, provided that CLDOC is installed.
 
 
 Dependencies
