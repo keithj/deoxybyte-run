@@ -30,10 +30,12 @@
 
 (defsystem deoxybyte-run
     :name "deoxybyte-run"
+    :version "0.4.2"
     :author "Keith James"
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-run :deoxybyte-run-test)))
-    :depends-on (:deoxybyte-utilities :deoxybyte-io)
+    :depends-on ((:version :deoxybyte-io "0.4.3")
+                 (:version :deoxybyte-utilities "0.5.0"))
     :components
     ((:module :core
               :serial t
