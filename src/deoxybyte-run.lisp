@@ -22,7 +22,8 @@
 (defparameter *wait-for-run-process*
   #+:sbcl t
   #+:lispworks nil
-  #-(or :sbcl :lispworks) t
+  #+ccl t
+  #-(or :sbcl :lispworks ccl) t
   "Indicates whether the Lisp program should wait for the run
   process,or not.")
 
@@ -176,7 +177,6 @@ Returns:
                                                   for arg in args
                                                   for val in vals
                                                   nconc (list arg val))))))
-        (format t "~a ~a~%" args-of program) proc-args)
         (multiple-value-bind (stream error-stream pid)
             (apply #'system:run-shell-command
                    (format nil "~a -c '~a ~{~a~^ ~}'" (shell-of program)
@@ -184,7 +184,7 @@ Returns:
                            (args-of program)) proc-args)
           (setf (slot-value program 'process)
                 (make-process :id pid :input stream :output stream
-                              :error error-stream)))))
+                              :error error-stream))))))
   
   (defmethod input-of ((program external-program))
     (process-input (process-of program)))
@@ -255,7 +255,7 @@ Returns:
 
   (defmethod exit-code-of ((program external-program))
     (multiple-value-bind (status exit-code)
-        (process-of program)
+        (ccl:external-process-status (process-of program))
       (declare (ignore status))
       exit-code))
 

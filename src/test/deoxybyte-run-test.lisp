@@ -62,3 +62,4 @@
                                          repeat 8
                                          collect (read-byte png-stream)))))
     (delete-file png-filespec)))
+

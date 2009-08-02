@@ -49,3 +49,9 @@ Dependencies
 deoxybyte-systems       git://github.com/keithj/deoxybyte-systems.git
 deoxybyte-utilities     git://github.com/keithj/deoxybyte-utilities.git
 deoxybyte-io            git://github.com/keithj/deoxybyte-io.git
+
+
+Optional dependencies
+
+LIFT                    http://common-lisp.net/project/lift/
+CLDOC                   http://common-lisp.net/project/cldoc/
