@@ -40,6 +40,7 @@
    #:kill-process
    #:run
    #:runningp
+   #:programs-running
 
    ;; rsh
    #:*default-remote-host*

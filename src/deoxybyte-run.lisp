@@ -22,10 +22,58 @@
 (defparameter *wait-for-run-process*
   #+:sbcl t
   #+:lispworks nil
-  #+ccl t
-  #-(or :sbcl :lispworks ccl) t
+  #+:ccl t
+  #-(or :sbcl :lispworks :ccl) t
   "Indicates whether the Lisp program should wait for the run
   process,or not.")
+
+(defvar *program-instances-mutex*
+  #+:sbcl (sb-thread:make-mutex :name "program instances lock")
+  #+:lispworks (mp:make-lock)
+  #+:ccl (ccl:make-lock :name "program instances lock")
+  "Mutex lock that protects the list of running {defclass external-program}
+instances.")
+
+(defparameter *program-instances* ()
+  "List where running {defclass external-program} instances are
+recorded")
+
+;;; Using a third-party compatability library is overkill for this
+;;; single locking case.
+
+#+:sbcl
+(defmacro with-lock ((mutex) &body body)
+  "Executes BODY with MUTEX lock held."
+  `(sb-thread:with-mutex (,mutex)
+     ,@body))
+
+#+:lispworks
+(defmacro with-lock ((mutex) &body body)
+  "Executes BODY with MUTEX lock held."
+  `(mp:with-lock (,mutex)
+     ,@body))
+
+#+:ccl
+(defmacro with-lock ((mutex) &body body)
+  "Executes BODY with MUTEX lock held."
+  `(ccl:with-lock-grabbed (,mutex)
+     ,@body))
+
+(defun update-program-instances (&optional program)
+  "Updates the list of all currently running {defclass external-program}
+instances, adding an optional instance PROGRAM and removing any instances
+that are no longer running."
+  (with-lock (*program-instances-mutex*)
+    (when (and program (runningp program))
+      (push program *program-instances*))
+    (setf *program-instances* (delete-if (complement #'runningp)
+                                         *program-instances*))))
+
+(defun evict-program-instance (program)
+  "Specifically removes PROGRAM from the list of all currently running
+{defclass external-program} instances."
+  (with-lock (*program-instances-mutex*)
+    (setf *program-instances* (delete program *program-instances*))))
 
 (defclass external-program ()
   ((shell :initform "sh"
@@ -49,6 +97,12 @@ this class are to standardise handling of input, output and error
 streams, such that they are always available via accessors and to
 allow creation of subclasses that handle these streams in defined
 ways."))
+
+(defun programs-running ()
+  "Returns a list of all currently running {defclass external-program}
+instances."
+  (with-lock (*program-instances-mutex*)
+    (remove-if (complement #'runningp) *program-instances*)))
 
 (defun run (command &key (non-zero-error t) (environment nil environmentp))
   "This is a convenience function that runs an external program
@@ -94,6 +148,11 @@ Returns:
     (format stream "#<EXTERNAL-PROGRAM ~s ~{~^~s ~} exit: ~d>"
             prg args exit-code)))
 
+(defmethod kill-process :after ((program external-program) signal
+                                &optional whom)
+  (declare (ignore signal whom))
+  (evict-program-instance program))
+
 #+:sbcl
 (progn
   (defmethod initialize-instance :after ((program external-program)
@@ -114,17 +173,10 @@ Returns:
                                       (list arg (as-strings val))
                                     (list arg val)))))
           (setf (slot-value program 'process)
-                ;; Run directly
                  (apply #'sb-ext:run-program (program-of program)
                         (args-of program)
-                        proc-args)
-                ;; Run inside another shell. This allows correct
-                ;; handling of environment variables
-;;                 (apply #'sb-ext:run-program (shell-of program)
-;;                        (list "-c" (format nil "~a ~{~a~^ ~}"
-;;                                           (program-of program)
-;;                                           (args-of program))) proc-args)
-                )))))
+                        proc-args))
+          (update-program-instances program)))))
 
   (defmethod input-of ((program external-program))
     (sb-ext:process-input (process-of program)))
@@ -184,7 +236,8 @@ Returns:
                            (args-of program)) proc-args)
           (setf (slot-value program 'process)
                 (make-process :id pid :input stream :output stream
-                              :error error-stream))))))
+                              :error error-stream))
+          (update-program-instances program)))))
   
   (defmethod input-of ((program external-program))
     (process-input (process-of program)))
@@ -236,7 +289,8 @@ Returns:
               ;; Run directly
               (apply #'ccl:run-program (program-of program)
                      (args-of program)
-                     proc-args)))))
+                     proc-args))
+        (update-program-instances program))))
 
   (defmethod input-of ((program external-program))
     (ccl:external-process-input-stream (process-of program)))
