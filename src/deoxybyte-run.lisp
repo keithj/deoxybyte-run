@@ -60,9 +60,10 @@ recorded")
      ,@body))
 
 (defun update-program-instances (&optional program)
-  "Updates the list of all currently running {defclass external-program}
-instances, adding an optional instance PROGRAM and removing any instances
-that are no longer running."
+  "Updates the list of all currently running {defclass
+external-program} instances, adding an optional instance PROGRAM and
+removing any instances that are no longer running. Returns the list of
+the currently running program instances."
   (with-lock (*program-instances-mutex*)
     (when (and program (runningp program))
       (push program *program-instances*))
@@ -71,7 +72,8 @@ that are no longer running."
 
 (defun evict-program-instance (program)
   "Specifically removes PROGRAM from the list of all currently running
-{defclass external-program} instances."
+{defclass external-program} instances. Returns the list of the
+currently running program instances."
   (with-lock (*program-instances-mutex*)
     (setf *program-instances* (delete program *program-instances*))))
 
