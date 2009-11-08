@@ -111,7 +111,7 @@ files, :directory to return only directories or NIL to return both
 files and directories."
   (let ((dir (merge-remote-pathnames (fad:pathname-as-directory pathspec))))
     (loop
-       for filename in (rsh-ls host (namestring dir) ignore-backups)
+       for filename in (rsh-ls host (pathstring dir) ignore-backups)
        if (ends-with-char-p filename #\/)
        collect (fad:pathname-as-directory filename) into dirs
        else
@@ -150,7 +150,7 @@ defaults."
 otherwise. Each PATHSPEC is first merged with remote pathname
 defaults."
   (subsetp (mapcar (lambda (ps)
-                     (namestring (fad:pathname-as-directory ps))) pathspecs)
+                     (pathstring (fad:pathname-as-directory ps))) pathspecs)
            (rsh-list-directory *remote-pathname-defaults*
                                :host host :filetype :directory)
            :test #'equal))
@@ -173,7 +173,7 @@ defaults."
 HOST, using {defun rsh-list-directory} to find the candidates for
 CHILD-PATHNAME."
   (some (lambda (pn)
-          (string= (namestring pn) (namestring child-pathname)))
+          (string= (pathstring pn) (pathstring child-pathname)))
         (rsh-list-directory parent-pathname :host host :filetype filetype)))
 
 (defun rsh-ls (host pathspec &optional (ignore-backups t))
@@ -199,8 +199,8 @@ using mkdir arguments MKDIR-ARGS. Returns PATHSPEC."
     (cond ((absolute-pathname-p dir)
            (close-process
             (rsh-exec (format nil (rsh-cmd-template :rsh-mkdir)
-                              (namestring pathspec) *mkdir-executable*
-                              mkdir-args (namestring pathspec))
+                              (pathstring pathspec) *mkdir-executable*
+                              mkdir-args (pathstring pathspec))
                       :host host))
            pathspec)
           (t
