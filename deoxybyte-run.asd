@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2007-2009 Keith James. All rights reserved.
+;;; Copyright (C) 2007-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -36,7 +36,7 @@
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-run :deoxybyte-run-test)))
     :depends-on ((:version :deoxybyte-io "0.5.3")
-                 (:version :deoxybyte-utilities "0.5.0"))
+                 (:version :deoxybyte-utilities "0.5.6"))
     :components
     ((:module :core
               :serial t

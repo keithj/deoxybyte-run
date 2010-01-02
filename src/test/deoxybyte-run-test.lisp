@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2007-2009 Keith James. All rights reserved.
+;;; Copyright (C) 2007-2010 Keith James. All rights reserved.
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
   "The first eight bytes of any PNG file.")
 
 (defun as-bytes (str)
-  (make-array (length str) :element-type '(unsigned-byte 8)
+  (make-array (length str) :element-type 'octet
               :initial-contents (loop for c across str
                                      collect (char-code c))))
 
@@ -57,7 +57,7 @@
     (stop-gnuplot plotter)
     (ensure (not (open-stream-p (input-of plotter))))
     (with-open-file (png-stream png-filespec :direction :input
-                     :element-type '(unsigned-byte 8))
+                                :element-type 'octet)
       (ensure (equalp *png-signature* (loop
                                          repeat 8
                                          collect (read-byte png-stream)))))

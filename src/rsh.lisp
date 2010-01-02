@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2009 Keith James. All rights reserved.
+;;; Copyright (C) 2009-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -196,18 +196,13 @@ is T (the default) then tilda backup files are ignored."
   "Executes mkdir to create a directory specified by PATHSPEC on HOST
 using mkdir arguments MKDIR-ARGS. Returns PATHSPEC."
   (let ((dir (merge-remote-pathnames (fad:pathname-as-directory pathspec))))
-    (cond ((absolute-pathname-p dir)
-           (close-process
-            (rsh-exec (format nil (rsh-cmd-template :rsh-mkdir)
-                              (pathstring pathspec) *mkdir-executable*
-                              mkdir-args (pathstring pathspec))
-                      :host host))
-           pathspec)
-          (t
-           (error 'invalid-argument-error
-                  :params 'pathspec
-                  :args pathspec
-                  :text "the pathspec must be absolute, not relative")))))
+    (check-arguments (absolute-pathname-p dir) (pathspec)
+                     "the pathspec must be absolute, not relative")
+    (close-process (rsh-exec (format nil (rsh-cmd-template :rsh-mkdir)
+                                     (pathstring pathspec) *mkdir-executable*
+                                     mkdir-args (pathstring pathspec))
+                             :host host))
+    pathspec))
 
 (defun parse-directory-path (pathname)
   "Returns two values, being the root of PATHNAME with the terminal

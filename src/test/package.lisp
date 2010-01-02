@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2007-2009 Keith James. All rights reserved.
+;;; Copyright (C) 2007-2010 Keith James. All rights reserved.
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -16,6 +16,6 @@
 ;;;
 
 (defpackage :uk.co.deoxybyte-run-test
-  (:use #:common-lisp #:deoxybyte-run #:lift)
+  (:use #:common-lisp #:deoxybyte-run #:deoxybyte-utilities #:lift)
   (:documentation "Deoxybyte run tests.")
   (:export #:deoxybyte-run-tests))
