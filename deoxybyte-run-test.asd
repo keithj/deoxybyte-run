@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (C) 2007-2009 Keith James. All rights reserved.
+;;; Copyright (C) 2007-2010 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -20,7 +20,25 @@
 (in-package :uk.co.deoxybyte-run-system)
 
 (defsystem deoxybyte-run-test
-  :depends-on (:deoxybyte-run)
+  :depends-on (
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation, either version 3 of the License, or
+;;; (at your option) any later version.
+;;;
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;;;
+
+(in-package :uk.co.deoxybyte-io-system)
+
+(defsystem deoxybyte-io-test
+  :depends-on ((:version :lift "1.7.0")
+               :deoxybyte-run)
   :components ((:module :deoxybyte-run-test
                         :serial t
                         :pathname "src/test/"
