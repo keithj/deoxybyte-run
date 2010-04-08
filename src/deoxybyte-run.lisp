@@ -30,7 +30,7 @@
 (defvar *program-instances-mutex*
   #+:sbcl (sb-thread:make-mutex :name "program instances lock")
   #+:lispworks (mp:make-lock)
-  #+:ccl (ccl:make-lock :name "program instances lock")
+  #+:ccl (ccl:make-lock "program instances lock")
   "Mutex lock that protects the list of running {defclass external-program}
 instances.")
 
@@ -117,7 +117,7 @@ Arguments:
 Key:
 
 - non-zero-error (boolean): If T will raise a
-  {define-conditionnon-zero-exit-error} if the external program exits
+  {define-condition non-zero-exit-error} if the external program exits
   with a non-zero exit code. The default is T.
 - environment (alist): An alist of keys and values describing the
   environment
@@ -135,7 +135,7 @@ Returns:
                         (when environmentp
                           (list :environment environment)))))
     (unwind-protect
-         (cond ((and (integerp (exit-code-of program)) 
+         (cond ((and (integerp (exit-code-of program))
                      (zerop (exit-code-of program)))
                 program)
                (non-zero-error

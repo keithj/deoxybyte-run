@@ -79,6 +79,7 @@
    #:y-values-of
    #:length-of
    #:draw-plot
+   #:update-plot
    #:run-gnuplot
    #:stop-gnuplot)
   (:documentation "The deoxybyte-run system is a compatability and

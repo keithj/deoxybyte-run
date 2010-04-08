@@ -28,7 +28,13 @@
 ;;;
 
 (defclass gnuplot (external-program)
-  ()
+  ((plot-stream :initform nil
+                :accessor plot-stream-of
+                :documentation "The stream to which plotting
+instructions are written. By default this is the input stream of the
+Gnuplot process. In debug mode, this is a broadcast stream which
+writes to the input stream of the Gnuplot process and also to
+*error-output*."))
   (:documentation "An instance of this class represents a Gnuplot
 process that is used to plot graphs in batch mode.
 
@@ -46,7 +52,7 @@ plotter. Changing a slot value in a plot, axis or series will not
 cause an active plot to be updated.
 
 An example of an XY plot of one series, plotted to a PNG file and also
-to the screen.
+to the screen, with dynamic updates.
 
 ;;; (let ((plotter (run-gnuplot))
 ;;;       (plot (make-instance
@@ -59,15 +65,21 @@ to the screen.
 ;;;                                     :position :y)
 ;;;              :series (make-instance 'xy-series
 ;;;                                     :x-values
-;;;                                     '(-1 0 3 4 5 8)
+;;;                                     (list -1 0 3 4 5 8)
 ;;;                                     :y-values
-;;;                                     '(-10 2 4 5 17 10)
+;;;                                     (list -10 2 4 5 17 10)
 ;;;                                     :style '(:linespoints
 ;;;                                              :smooth
 ;;;                                              :csplines)))))
 ;;;   (draw-plot plotter plot :terminal :png :output "foo.png")
 ;;;   (draw-plot plotter plot :terminal :x11)
-;;;   (sleep 5)
+;;;   (let ((s (series-of plot)))
+;;;                 (dotimes (n 5)
+;;;                   (with-accessors ((y y-values-of))
+;;;                       s
+;;;                     (setf y (mapcar #'1+ y)))
+;;;                   (update-plot plotter plot)
+;;;                   (sleep 1)))
 ;;;   (stop-gnuplot plotter))"))
 
 (defclass plot ()
@@ -141,17 +153,43 @@ position and style.")))
              :accessor y-values-of))
   (:documentation "An xy series of two sequences of equal length."))
 
-(defmethod initialize-instance :after ((plotter gnuplot) &key &allow-other-keys)
+(defmethod initialize-instance :after ((plotter gnuplot) &key debug
+                                       &allow-other-keys)
   (unless (runningp plotter)
-    (error "Gnuplot failed to start ~a" plotter)))
+    (error "Gnuplot failed to start ~a" plotter))
+  (with-accessors ((input input-of) (stream plot-stream-of))
+      plotter
+    (setf stream (if debug
+                     (make-broadcast-stream input *error-output*)
+                   input))))
 
 (defmethod initialize-instance :after ((series xy-series) &key)
-  (with-slots (x-values y-values) series
-    (unless (= (length x-values) (length y-values))
-      (error 'invalid-argument-error
-             :params '(:x-values :y-values)
-             :args (list x-values y-values)
-             :text "The x and y sequences are not the same length."))))
+  (with-slots (x-values y-values)
+      series
+    (check-arguments (= (length x-values) (length y-values)) (x-values y-values)
+                     "The x and y sequences are not the same length.")))
+
+(defmethod print-object ((plot plot) stream)
+  (print-unreadable-object (plot stream :type t)
+    (with-slots (title x-axis y-axis)
+        plot
+      (format stream "~s ~a ~a" title x-axis y-axis))))
+
+(defmethod print-object ((axis axis) stream)
+  (print-unreadable-object (axis stream :type t)
+    (with-slots (position label range)
+        axis
+      (format stream "~a ~s ~a" position label range))))
+
+(defmethod print-object ((series series) stream)
+  (print-unreadable-object (series stream :type t)
+    (princ (style-of series) stream)))
+
+(defmethod print-object ((series xy-series) stream)
+  (print-unreadable-object (series stream :type t)
+    (with-slots (x-values y-values style)
+        series
+      (format stream "~d x ~d ~a" (length x-values) (length y-values) style))))
 
 (defclass category-series (series)
   ((categories :initform nil
@@ -162,13 +200,10 @@ position and style.")))
            :accessor values-of)))
 
 (defmethod initialize-instance :after ((series category-series) &key)
-  (with-slots (categories values) series
-    (unless (= (length categories) (length values))
-      (error 'invalid-argument-error
-             :params '(:categories :values)
-             :args (list categories values)
-             :text (txt "The category and value sequences"
-                        "are not the same length.")))))
+  (with-slots (categories values)
+      series
+    (check-arguments (= (length categories) (length values)) (categories values)
+                     "The category and value sequences are not the same length.")))
 
 (defgeneric length-of (series)
   (:documentation "Returns the length of SERIES."))
@@ -183,24 +218,31 @@ position and style.")))
   (:documentation "Returns a Gnuplot header string for SERIES."))
 
 (defgeneric write-header (series stream)
-  (:documentation "Writes the Gnuplot header data for SERIES STREAM."))
+  (:documentation "Writes the Gnuplot header data for SERIES to STREAM."))
 
 (defgeneric write-data (series stream)
   (:documentation "Writes the Gnuplot data of SERIES to STREAM."))
 
 (defgeneric draw-plot (plotter plot &key terminal output)
-  (:documentation "Renders a single plot, that is, title, axes, legend
+  (:documentation "Renders a single PLOT, that is, title, axes, legend
 and one or more series."))
 
+(defgeneric update-plot (plotter plot)
+  (:documentation "Updates a single PLOT, replotting axes and
+series. Any changes to axis ranges or series data will be reflected in
+the plot. By replacing or modifying the axes or series of PLOT and
+calling this method in a loop, dynamic plots may be achieved."))
+
 (defmethod length-of ((series xy-series))
-  (length (x-values-of series)))
+  (length (slot-value series 'x-values)))
 
 (defmethod length-of ((series category-series))
-  (length (categories-of series)))
+  (length (slot-value series 'categories)))
 
 (defmethod format-axis ((plotter gnuplot) (axis axis))
-  (let ((stream (input-of plotter)))
-    (with-slots (position label tics minor-tics) axis
+  (let ((stream (plot-stream-of plotter)))
+    (with-slots (position label tics minor-tics)
+        axis
       (when label
         (format stream "set ~(~a~)label ~s~%" position label))
       (when tics
@@ -219,7 +261,7 @@ and one or more series."))
   (format nil " '-' using 2:xtic(1)~@[ with ~{~^~(~a~) ~}~]" (style-of series)))
 
 (defmethod format-series ((plotter gnuplot) (series list))
-  (let ((stream (input-of plotter)))
+  (let ((stream (plot-stream-of plotter)))
     (dolist (s (butlast series))
       (write-string (header-of s) stream)
       (write-string "," stream))
@@ -230,34 +272,35 @@ and one or more series."))
   series)
 
 (defmethod format-series ((plotter gnuplot) (series xy-series))
-  (let ((stream (input-of plotter)))
+  (let ((stream (plot-stream-of plotter)))
     (write-string (header-of series) stream)
     (terpri stream)
     (write-data series stream))
   series)
 
 (defmethod write-data ((series xy-series) (stream stream))
-  (loop
-     with x = (x-values-of series)
-     and y = (y-values-of series)
-     for i from 0 below (length-of series)
-     do (format stream "~a ~a~%" (elt x i) (elt y i))
-     finally (format stream "e~%"))
+  (with-slots (x-values y-values)
+      series
+    (loop
+       for i from 0 below (length-of series)
+       do (format stream "~a ~a~%" (elt x-values i) (elt y-values i))
+       finally (write-line "e" stream)))
   series)
 
 (defmethod write-data ((series category-series) (stream stream))
-  (loop
-     with x = (categories-of series)
-     and y = (values-of series)
-     for i from 0 below (length-of series)
-     do (format stream "~a ~a~%" (elt x i) (elt y i))
-     finally (format stream "e~%"))
+  (with-slots (categories values)
+      series
+    (loop
+       for i from 0 below (length-of series)
+       do (format stream "~a ~a~%" (elt categories i) (elt values i))
+       finally (write-line "e" stream)))
   series)
 
 (defmethod draw-plot :before ((plotter gnuplot) (plot 2d-plot)
                               &key (terminal :x11) output)
-  (let ((stream (input-of plotter)))
-    (with-slots (title x-axis y-axis series) plot
+  (let ((stream (plot-stream-of plotter)))
+    (with-slots (title x-axis y-axis series)
+        plot
       (princ "set terminal " stream)
       (if (listp terminal)
           (format stream "~{~^~(~a~) ~}~%" terminal)
@@ -267,7 +310,7 @@ and one or more series."))
       (if (and (legend-of plot)
                (listp (legend-of plot)))
           (format stream "set key ~{~^~(~a~) ~}~%" (legend-of plot))
-        (format stream "set key off~%"))
+        (write-line "set key off" stream))
       (format-axis plotter x-axis)
       (format-axis plotter y-axis)))
   plot)
@@ -275,7 +318,7 @@ and one or more series."))
 (defmethod draw-plot ((plotter gnuplot) (plot 2d-plot)
                       &key (terminal :x11) output)
   (declare (ignore terminal output))
-  (let ((stream (input-of plotter)))
+  (let ((stream (plot-stream-of plotter)))
     (write-string "plot" stream)
     (format-series plotter (series-of plot)))
   plot)
@@ -283,7 +326,7 @@ and one or more series."))
 (defmethod draw-plot ((plotter gnuplot) (plot histogram)
                       &key (terminal :x11) output)
   (declare (ignore terminal output))
-  (let ((stream (input-of plotter)))
+  (let ((stream (plot-stream-of plotter)))
     (write-line "set style data histogram" stream)
     (write-string "plot" stream)
     (format-series plotter (series-of plot)))
@@ -292,19 +335,33 @@ and one or more series."))
 (defmethod draw-plot :after ((plotter gnuplot) (plot plot)
                              &key terminal output)
   (declare (ignore terminal output))
-  (force-output (input-of plotter))
+  (force-output (plot-stream-of plotter))
   plot)
 
-(defun run-gnuplot ()
+(defmethod update-plot ((plotter gnuplot) (plot 2d-plot))
+  (let ((stream (plot-stream-of plotter)))
+    (with-slots (x-axis y-axis series)
+        plot
+      (format-axis plotter x-axis)
+      (format-axis plotter y-axis)
+      (write-string "plot" stream)
+      (format-series plotter series)))
+  plot)
+
+(defmethod update-plot :after ((plotter gnuplot) (plot plot))
+  (force-output (plot-stream-of plotter))
+  plot)
+
+(defun run-gnuplot (&key debug)
   "Starts a new Gnuplot process and returns a CLOS object of class
 GNUPLOT."
   (make-instance 'gnuplot
                  :program "gnuplot" :args '("-display" ":0.0")
-                 :input :stream :output :stream :search t :wait nil))
+                 :input :stream :output :stream :search t :wait nil :debug debug))
 
 (defun stop-gnuplot (plotter)
   "Stops the PLOTTER process."
-  (let ((stream (input-of plotter)))
+  (let ((stream (plot-stream-of plotter)))
     (write-line "quit" stream)
     (force-output stream))
   (wait-for plotter)
