@@ -121,7 +121,8 @@ orientation of the axis.")
           :initarg :range
           :accessor range-of
           :documentation "A specifier for the visible range of the
-axis.")
+axis. Ranges are represented as a list of two numbers, being the upper
+and lower bounds.")
    (label :initform nil
           :initarg :label
           :accessor label-of
@@ -147,11 +148,42 @@ position and style.")))
 (defclass xy-series (series)
   ((x-values :initform nil
              :initarg :x-values
-             :accessor x-values-of)
+             :accessor x-values-of
+             :documentation "A sequence of numbers.")
    (y-values :initform nil
              :initarg :y-values
-             :accessor y-values-of))
+             :accessor y-values-of
+             :documentation "A sequence of numbers."))
   (:documentation "An xy series of two sequences of equal length."))
+
+(defclass category-series (series)
+  ((categories :initform nil
+               :initarg :categories
+               :accessor categories-of)
+   (values :initform nil
+           :initarg :values
+           :accessor values-of)))
+
+(defun 2d-plot (x-axis y-axis series &rest initargs)
+  "Convenience constructor for 2D-PLOT objects."
+  (apply #'make-instance '2d-plot :x-axis x-axis :y-axis y-axis :series series
+         initargs))
+
+(defun x-axis (&rest initargs)
+  "Convenience constructor for x-axes."
+  (apply #'make-instance 'axis :position :x initargs))
+
+(defun y-axis (&rest initargs)
+  "Convenience constructor for y-axes."
+  (apply #'make-instance 'axis :position :y initargs))
+
+(defun xy-series (x-values y-values &rest initargs)
+  "Convenience constructor for xy-series."
+  (apply #'make-instance 'xy-series :x-values x-values :y-values y-values initargs))
+
+(defun category-series (categories values &rest initargs)
+  "Convenience constructor for category-series."
+  (apply #'make-instance 'category-series :categories categories :values values))
 
 (defmethod initialize-instance :after ((plotter gnuplot) &key debug
                                        &allow-other-keys)
@@ -168,6 +200,12 @@ position and style.")))
       series
     (check-arguments (= (length x-values) (length y-values)) (x-values y-values)
                      "The x and y sequences are not the same length.")))
+
+(defmethod initialize-instance :after ((series category-series) &key)
+  (with-slots (categories values)
+      series
+    (check-arguments (= (length categories) (length values)) (categories values)
+                     "The category and value sequences are not the same length.")))
 
 (defmethod print-object ((plot plot) stream)
   (print-unreadable-object (plot stream :type t)
@@ -191,22 +229,19 @@ position and style.")))
         series
       (format stream "~d x ~d ~a" (length x-values) (length y-values) style))))
 
-(defclass category-series (series)
-  ((categories :initform nil
-               :initarg :categories
-               :accessor categories-of)
-   (values :initform nil
-           :initarg :values
-           :accessor values-of)))
-
-(defmethod initialize-instance :after ((series category-series) &key)
-  (with-slots (categories values)
-      series
-    (check-arguments (= (length categories) (length values)) (categories values)
-                     "The category and value sequences are not the same length.")))
+(defgeneric nth-series-of (n plot)
+  (:documentation "Returns the Nth series of PLOT."))
 
 (defgeneric length-of (series)
   (:documentation "Returns the length of SERIES."))
+
+(defgeneric x-range-of (xy-series)
+  (:documentation "Returns the range of the x-axis of XY-SERIES and a
+list of two integers,"))
+
+(defgeneric y-range-of (xy-series)
+  (:documentation "Returns the range of the y-axis of XY-SERIES and a
+list of two integers,"))
 
 (defgeneric format-axis (plotter axis)
   (:documentation "Renders AXIS using PLOTTER."))
@@ -233,22 +268,52 @@ series. Any changes to axis ranges or series data will be reflected in
 the plot. By replacing or modifying the axes or series of PLOT and
 calling this method in a loop, dynamic plots may be achieved."))
 
+(defmethod nth-series-of ((n integer) (plot plot))
+  (with-slots (series)
+      plot
+    (check-arguments (or (and (listp series) (< n (list-length series)))
+                         (zerop n)) (n) "index out of bounds")
+    (if (listp series)
+        (nth n series)
+      series)))
+
 (defmethod length-of ((series xy-series))
   (length (slot-value series 'x-values)))
 
 (defmethod length-of ((series category-series))
   (length (slot-value series 'categories)))
 
+(defmethod x-range-of ((series xy-series))
+  (series-slot-range series 'x-values))
+
+(defmethod x-range-of ((series list))
+  (series-aggregate-range series #'x-range-of))
+
+(defmethod y-range-of ((series xy-series))
+  (series-slot-range series 'y-values))
+
+(defmethod y-range-of ((series list))
+  (series-aggregate-range series #'y-range-of))
+
+(defmethod append-data ((series xy-series) &key x-values y-values)
+  (with-slots ((x x-values) (y y-values))
+      series
+    (setf x (concatenate (type-of x) x x-values)
+          y (concatenate (type-of y) y y-values))))
+
 (defmethod format-axis ((plotter gnuplot) (axis axis))
   (let ((stream (plot-stream-of plotter)))
-    (with-slots (position label tics minor-tics)
+    (with-slots (position label tics minor-tics range)
         axis
       (when label
         (format stream "set ~(~a~)label ~s~%" position label))
       (when tics
         (format stream "set ~(~a~)tics ~a~%" position tics))
       (when minor-tics
-        (format stream "set ~(~a~)mtics ~a~%" position minor-tics)))
+        (format stream "set ~(~a~)mtics ~a~%" position minor-tics))
+      (when range
+        (format stream "set ~(~a~)range [~a:~a]~%" position
+                (first range) (second range))))
     axis))
 
 (defmethod header-of ((series series))
@@ -260,6 +325,13 @@ calling this method in a loop, dynamic plots may be achieved."))
 (defmethod header-of ((series category-series))
   (format nil " '-' using 2:xtic(1)~@[ with ~{~^~(~a~) ~}~]" (style-of series)))
 
+(defmethod format-series ((plotter gnuplot) (series series))
+  (let ((stream (plot-stream-of plotter)))
+    (write-string (header-of series) stream)
+    (terpri stream)
+    (write-data series stream))
+  series)
+
 (defmethod format-series ((plotter gnuplot) (series list))
   (let ((stream (plot-stream-of plotter)))
     (dolist (s (butlast series))
@@ -269,13 +341,6 @@ calling this method in a loop, dynamic plots may be achieved."))
     (terpri stream)
     (dolist (s series)
       (write-data s stream)))
-  series)
-
-(defmethod format-series ((plotter gnuplot) (series xy-series))
-  (let ((stream (plot-stream-of plotter)))
-    (write-string (header-of series) stream)
-    (terpri stream)
-    (write-data series stream))
   series)
 
 (defmethod write-data ((series xy-series) (stream stream))
@@ -345,7 +410,12 @@ calling this method in a loop, dynamic plots may be achieved."))
       (format-axis plotter x-axis)
       (format-axis plotter y-axis)
       (write-string "plot" stream)
-      (format-series plotter series)))
+      (format-series plotter series)
+      (destructuring-bind (ymin ymax)
+          (y-range-of series)
+        (let ((y-range (- ymax ymin)))
+          (format stream "set yrange [~a:~a]~%" (- ymin (/ y-range 20))
+                  (+ ymax (/ y-range 20)))))))
   plot)
 
 (defmethod update-plot :after ((plotter gnuplot) (plot plot))
@@ -367,3 +437,23 @@ GNUPLOT."
   (wait-for plotter)
   (close-process plotter)
   plotter)
+
+(defun series-slot-range (series slot)
+  "Returns a list of two integers describing the range of values in
+SLOT of SERIES. The first integer is the minimum and the second the
+maximum."
+  (let* ((value (slot-value series slot))
+         (seq (if (listp value)
+                  value
+                (coerce value 'list))))
+    (if seq
+        (list (apply #'min seq) (apply #'max seq))
+      (list nil nil))))
+
+(defun series-aggregate-range (list accessor)
+  "Returns a list of describing the aggregate range of values in LIST
+of series, vai ACCESSOR. The first integer is the minimum and the
+second the maximum."
+  (let ((ranges (mapcar accessor list)))
+    (list (reduce #'min ranges :key #'first)
+          (reduce #'max ranges :key #'second))))

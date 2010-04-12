@@ -33,7 +33,7 @@
               :initial-contents (loop for b across bytes
                                      collect (code-char b))))
 
-(addtest (deoxybyte-run-tests) gnuplot/1
+(addtest (deoxybyte-run-tests) gnuplot/png/1
   (ensure-directories-exist (merge-pathnames "data"))
   (let* ((png-filespec (namestring (merge-pathnames "data/xy-plot.png")))
          (plotter (run-gnuplot))
@@ -63,3 +63,37 @@
                                          collect (read-byte png-stream)))))
     (delete-file png-filespec)))
 
+(addtest (deoxybyte-run-tests) gnuplot/x11/histogram/1
+  (let* ((plotter (run-gnuplot :debug nil))
+         (x (list "foo" "bar" "baz"))
+         (y (list 2.1 2.2 5.6))
+         (plot (make-instance 'histogram
+                              :x-axis (x-axis :label "x" :range (list -0.5 6.5))
+                              :y-axis (y-axis :label "y" :range (list -0.5 6.5))
+                              :series (make-instance 'category-series
+                                                     :categories x :values y)
+                        :title "Histogram")))
+    (draw-plot plotter plot :terminal :x11)
+    (sleep 5)
+    (stop-gnuplot plotter)))
+
+(addtest (deoxybyte-run-tests) gnuplot/x11/update/1
+  (let* ((plotter (run-gnuplot :debug nil))
+         (x (list 0))
+         (y0 (list 0 1.1 1.3 1.9 2.3 4.5))
+         (y1 (list 0 0.7 1.2 2.1 2.2 5.6))
+         (plot (2d-plot (x-axis :label "x" :range (list -0.5 6.5))
+                        (y-axis :label "y" :range (list -0.5 6.5))
+                        (list (xy-series x (list 0) :style '(:linespoints))
+                              (xy-series x (list 0) :style '(:linespoints)))
+                        :title "Update")))
+    (draw-plot plotter plot :terminal :x11)
+    (loop
+       for i from 1 to 5
+       do (let ((s0 (nth-series-of 0 plot))
+                (s1 (nth-series-of 1 plot)))
+            (sleep 1)
+            (append-data s0 :x-values (list i) :y-values (list (nth i y0)))
+            (append-data s1 :x-values (list i) :y-values (list (nth i y1)))
+            (update-plot plotter plot)))
+    (stop-gnuplot plotter)))

@@ -61,16 +61,23 @@
    #:gnuplot
    #:plot
    #:2d-plot
+   #:histogram
+   #:x-axis
+   #:y-axis
    #:axis
    #:series
    #:xy-series
+   #:category-series
    #:title-of
    #:series-of
+   #:nth-series-of
    #:legend-of
    #:x-axis-of
    #:y-axis-of
    #:position-of
    #:range-of
+   #:x-range-of
+   #:y-range-of
    #:label-of
    #:tics-of
    #:minor-tics-of
@@ -80,6 +87,7 @@
    #:length-of
    #:draw-plot
    #:update-plot
+   #:append-data
    #:run-gnuplot
    #:stop-gnuplot)
   (:documentation "The deoxybyte-run system is a compatability and
