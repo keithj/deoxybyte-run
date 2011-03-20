@@ -179,11 +179,13 @@ position and style.")))
 
 (defun xy-series (x-values y-values &rest initargs)
   "Convenience constructor for xy-series."
-  (apply #'make-instance 'xy-series :x-values x-values :y-values y-values initargs))
+  (apply #'make-instance 'xy-series :x-values x-values
+         :y-values y-values initargs))
 
 (defun category-series (categories values &rest initargs)
   "Convenience constructor for category-series."
-  (apply #'make-instance 'category-series :categories categories :values values))
+  (apply #'make-instance 'category-series
+         :categories categories :values values initargs))
 
 (defmethod initialize-instance :after ((plotter gnuplot) &key debug
                                        &allow-other-keys)
@@ -205,7 +207,8 @@ position and style.")))
   (with-slots (categories values)
       series
     (check-arguments (= (length categories) (length values)) (categories values)
-                     "The category and value sequences are not the same length.")))
+                     (txt "The category and value sequences are not"
+                          "the same length."))))
 
 (defmethod print-object ((plot plot) stream)
   (print-unreadable-object (plot stream :type t)
@@ -257,6 +260,10 @@ list of two integers,"))
 
 (defgeneric write-data (series stream)
   (:documentation "Writes the Gnuplot data of SERIES to STREAM."))
+
+(defgeneric append-data (series &key x-values y-values)
+  (:documentation "Appends sequences of values X-VALUES and
+Y-VALUES to SERIES."))
 
 (defgeneric draw-plot (plotter plot &key terminal output)
   (:documentation "Renders a single PLOT, that is, title, axes, legend
@@ -427,7 +434,8 @@ calling this method in a loop, dynamic plots may be achieved."))
 GNUPLOT."
   (make-instance 'gnuplot
                  :program "gnuplot" :args '("-display" ":0.0")
-                 :input :stream :output :stream :search t :wait nil :debug debug))
+                 :input :stream :output :stream :search t :wait nil
+                 :debug debug))
 
 (defun stop-gnuplot (plotter)
   "Stops the PLOTTER process."
