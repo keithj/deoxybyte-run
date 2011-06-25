@@ -25,7 +25,7 @@
 
 (defsystem deoxybyte-run
     :name "deoxybyte-run"
-    :version "0.4.6"
+    :version "0.4.7"
     :author "Keith James"
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-run :deoxybyte-run-test)))
