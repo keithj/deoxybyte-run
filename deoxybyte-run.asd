@@ -25,22 +25,24 @@
 
 (defsystem deoxybyte-run
     :name "deoxybyte-run"
-    :version "0.4.7"
+    :version "0.5.0"
     :author "Keith James"
     :licence "GPL v3"
     :in-order-to ((test-op (load-op :deoxybyte-run :deoxybyte-run-test)))
-    :depends-on ((:version :deoxybyte-io "0.5.3")
-                 (:version :deoxybyte-utilities "0.5.6"))
+    :depends-on ((:version :deoxybyte-io "0.13.0")
+                 (:version :deoxybyte-utilities "0.10.0"))
     :components
     ((:module :core
               :serial t
               :pathname "src/"
               :components ((:file "package")
-                           (:file "generics")
                            (:file "conditions")
                            (:file "deoxybyte-run")
-                           (:file "gnuplot")
-                           (:file "rsh")))
+                           #+:sbcl (:file "sbcl")
+                           #+:ccl (:file "ccl")
+                           #- (or :sbcl :ccl) (:file "default")
+                           (:file "program-instances")
+                           (:file "gnuplot")))
      (:lift-test-config :deoxybyte-run-test
                         :target-system :deoxybyte-run)
      (:cldoc-config :deoxybyte-run-doc
