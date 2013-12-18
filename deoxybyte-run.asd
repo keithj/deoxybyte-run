@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2007-2011 Keith James. All rights reserved.
+;;; Copyright (c) 2007-2013 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -25,12 +25,14 @@
 
 (defsystem deoxybyte-run
     :name "deoxybyte-run"
-    :version "0.5.0"
+    :version "0.6.0"
     :author "Keith James"
     :licence "GPL v3"
-    :in-order-to ((test-op (load-op :deoxybyte-run :deoxybyte-run-test)))
-    :depends-on ((:version :deoxybyte-io "0.13.0")
-                 (:version :deoxybyte-utilities "0.10.0"))
+    :in-order-to ((test-op (load-op :deoxybyte-run :deoxybyte-run-test))
+                  (doc-op (load-op :deoxybyte-run :cldoc)))
+    :depends-on ((:version :deoxybyte-systems "1.0.0")
+                 (:version :deoxybyte-io "0.15.0")
+                 (:version :deoxybyte-utilities "0.11.0"))
     :components
     ((:module :core
               :serial t
@@ -42,9 +44,9 @@
                            #+:ccl (:file "ccl")
                            #- (or :sbcl :ccl) (:file "default")
                            (:file "program-instances")
-                           (:file "gnuplot")))
-     (:lift-test-config :deoxybyte-run-test
-                        :target-system :deoxybyte-run)
-     (:cldoc-config :deoxybyte-run-doc
-                    :target-system :deoxybyte-run
-                    :pathname "doc/html/")))
+                           (:file "gnuplot"))))
+    :perform (test-op :after (op c)
+                      (maybe-run-lift-tests :deoxybyte-run
+                                            "deoxybyte-run-test.config"))
+    :perform (doc-op :after (op c)
+                     (maybe-build-cldoc-docs :deoxybyte-run "doc/html")))
