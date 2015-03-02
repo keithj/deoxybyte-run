@@ -1,5 +1,5 @@
-g;;;
-;;; Copyright (c) 2012 Keith James. All rights reserved.
+;;;
+;;; Copyright (C) 2012, 2015 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -21,36 +21,30 @@ g;;;
 
 ;;; deoxybyte-run
 
-(defvar *program-instances-mutex*
-  (ccl:make-lock "program instances lock")
-  "Mutex lock that protects the list of running {defclass external-program}
-instances.")
+(defmethod start-process ((program external-program) &rest process-args
+                          &key &allow-other-keys)
+  (flet ((as-strings (alist)
+           (loop
+              for (key . val) in alist
+              collect (format nil "~a=~a" key val))))
+    (multiple-value-bind (args vals)
+        (collect-key-values '(:input :output :error :if-input-does-not-exist
+                              :if-output-exists :if-error-exists :environment
+                              :pty :wait :status-hook) process-args)
+      (let ((proc-args (loop
+                          for arg in args
+                          for val in vals
+                          nconc (if (eql :environment arg)
+                                    (list arg (as-strings val))
+                                    (list arg val)))))
+        (setf (slot-value program 'process)
+              (apply #'ccl:run-program (program-of program)
+                     (args-of program)
+                     proc-args)))))
+  program)
 
-;;; Using a third-party compatability library is overkill for this
-;;; single locking case.
-
-(defmacro with-lock ((mutex) &body body)
-  "Executes BODY with MUTEX lock held."
-  `(ccl:with-lock-grabbed (,mutex)
-     ,@body))
-
-(defmethod initialize-instance :after ((program external-program)
-                                       &rest process-args &key
-                                       &allow-other-keys)
-  (multiple-value-bind (args vals)
-      (collect-key-values '(:input :output :error :if-input-does-not-exist
-                            :if-output-exists :if-error-exists :pty :wait)
-                          process-args)
-    (let ((proc-args (loop
-                        for arg in args
-                        for val in vals
-                        nconc (list arg val))))
-      (setf (slot-value program 'process)
-            ;; Run directly
-            (apply #'ccl:run-program (program-of program)
-                   (args-of program)
-                   proc-args))
-      (update-program-instances program))))
+(defmethod startedp ((program external-program))
+  (process-of program))
 
 (defmethod input-of ((program external-program))
   (ccl:external-process-input-stream (process-of program)))
@@ -81,7 +75,19 @@ instances.")
 (defmethod kill-process ((program external-program) signal
                          &optional (whom :pid))
   (declare (ignore whom))
-  (ccl:signal-external-process (process-of program) signal)))
+  (ccl:signal-external-process (process-of program) signal))
 
 (defmethod runningp ((program external-program))
-  (eql :running (status-of program)))
+  (and (startedp program) (eql :running (status-of program))))
+
+(defmethod finishedp ((program external-program))
+  (and (startedp program) (member (status-of program) '(:exited :signaled))))
+
+(defun cleanup-process (process)
+  (when (eql :exited (ccl:external-process-status process))
+    (let ((in (ccl:external-process-input-stream process))
+          (out (ccl:external-process-output-stream process))
+          (err (ccl:external-process-error-stream process)))
+      (dolist (s (list in out err))
+        (when s
+          (close s))))))

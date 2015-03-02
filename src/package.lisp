@@ -1,5 +1,6 @@
 ;;;
-;;; Copyright (c) 2008-2011 Keith James. All rights reserved.
+;;; Copyright (C) 2008, 2009, 2010, 2011, 2015 Keith James. All rights
+;;; reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -41,21 +42,6 @@
    #:run
    #:runningp
    #:programs-running
-
-   ;; rsh
-   #:*default-remote-host*
-   #:*remote-pathname-defaults*
-   #:rsh
-   #:rsh-exec
-   #:host-of
-   #:merge-remote-pathnames
-   #:rsh-list-directory
-   #:rsh-file-exists-p
-   #:rsh-directory-exists-p
-   #:rsh-files-exist-p
-   #:rsh-directories-exist-p
-   #:rsh-make-directory
-   #:rsh-ensure-directories-exist
 
    ;; Gnuplot
    #:gnuplot

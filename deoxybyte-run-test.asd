@@ -1,5 +1,6 @@
 ;;;
-;;; Copyright (c) 2007-2011 Keith James. All rights reserved.
+;;; Copyright (C) 2007, 2008, 2009, 2010, 2011 Keith James. All rights
+;;; reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;

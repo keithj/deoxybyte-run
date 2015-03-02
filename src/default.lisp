@@ -1,5 +1,5 @@
 ;;;
-;;; Copyright (c) 2012 Keith James. All rights reserved.
+;;; Copyright (C) 2012 Keith James. All rights reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -20,4 +20,3 @@
 (in-package :uk.co.deoxybyte-run)
 
 (error "Running external programs not supported on this Lisp implementation.")
-

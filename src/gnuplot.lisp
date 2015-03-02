@@ -1,5 +1,6 @@
 ;;;
-;;; Copyright (c) 2008-2011 Keith James. All rights reserved.
+;;; Copyright (C) 2008, 2009, 2010, 2011, 2015 Keith James. All rights
+;;; reserved.
 ;;;
 ;;; This file is part of deoxybyte-run.
 ;;;
@@ -186,16 +187,6 @@ position and style.")))
   "Convenience constructor for category-series."
   (apply #'make-instance 'category-series
          :categories categories :values values initargs))
-
-(defmethod initialize-instance :after ((plotter gnuplot) &key debug
-                                       &allow-other-keys)
-  (unless (runningp plotter)
-    (error "Gnuplot failed to start ~a" plotter))
-  (with-accessors ((input input-of) (stream plot-stream-of))
-      plotter
-    (setf stream (if debug
-                     (make-broadcast-stream input *error-output*)
-                   input))))
 
 (defmethod initialize-instance :after ((series xy-series) &key)
   (with-slots (x-values y-values)
@@ -432,10 +423,19 @@ calling this method in a loop, dynamic plots may be achieved."))
 (defun run-gnuplot (&key debug)
   "Starts a new Gnuplot process and returns a CLOS object of class
 GNUPLOT."
-  (make-instance 'gnuplot
-                 :program "gnuplot" :args '("-display" ":0.0")
-                 :input :stream :output :stream :search t :wait nil
-                 :debug debug))
+  (let ((plotter (start-process (make-instance 'gnuplot :program "gnuplot"
+                                               :args '("-display" ":0.0"))
+                                :search t :wait nil
+                                :input :stream :output :stream
+                                :status-hook #'cleanup-process :debug debug)))
+    (unless (runningp plotter)
+      (error "Gnuplot failed to start ~a" plotter))
+    (with-accessors ((input input-of) (stream plot-stream-of))
+        plotter
+      (setf stream (if debug
+                       (make-broadcast-stream input *error-output*)
+                       input)))
+    plotter))
 
 (defun stop-gnuplot (plotter)
   "Stops the PLOTTER process."
